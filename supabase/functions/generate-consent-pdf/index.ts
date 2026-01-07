@@ -99,9 +99,18 @@ serve(async (req) => {
       yPosition -= lineHeight;
     };
 
+    // Helper to sanitize text for PDF (remove unsupported characters)
+    const sanitizeText = (text: string): string => {
+      return text
+        .replace(/[\n\r\t]/g, ' ')  // Replace newlines/tabs with spaces
+        .replace(/\s+/g, ' ')       // Collapse multiple spaces
+        .trim();
+    };
+
     // Helper to wrap text
     const wrapText = (text: string, maxWidth: number, fontSize: number): string[] => {
-      const words = text.split(' ');
+      const sanitized = sanitizeText(text);
+      const words = sanitized.split(' ');
       const lines: string[] = [];
       let currentLine = '';
       

@@ -190,6 +190,28 @@ export default function Invitations() {
     navigate(`/invitations/new?module=${invite.module_id}&email=${invite.patient_email}`);
   };
 
+  const handleGeneratePdf = async (invite: InviteWithModule) => {
+    const submissionId = invite.consent_submissions?.[0]?.id;
+    if (!submissionId) {
+      toast.error("No submission found for this invitation");
+      return;
+    }
+
+    toast.loading("Generating PDF...", { id: "pdf-gen" });
+
+    const { data, error } = await supabase.functions.invoke("generate-consent-pdf", {
+      body: { submissionId },
+    });
+
+    if (error) {
+      console.error("Error generating PDF:", error);
+      toast.error("Failed to generate PDF", { id: "pdf-gen" });
+    } else {
+      toast.success("PDF generated successfully!", { id: "pdf-gen" });
+      fetchInvitations(); // Refresh to get the new pdf_url
+    }
+  };
+
   const filteredInvitations = invitations.filter((invite) => {
     const matchesSearch =
       (invite.patient_first_name?.toLowerCase() || "").includes(searchQuery.toLowerCase()) ||
@@ -415,6 +437,12 @@ export default function Invitations() {
                                     <FileDown className="h-4 w-4 mr-2" />
                                     Download PDF
                                   </a>
+                                </DropdownMenuItem>
+                              )}
+                              {effectiveStatus === "completed" && !invitation.consent_submissions?.[0]?.pdf_url && (
+                                <DropdownMenuItem onClick={() => handleGeneratePdf(invitation)}>
+                                  <FileDown className="h-4 w-4 mr-2" />
+                                  Generate PDF
                                 </DropdownMenuItem>
                               )}
                               <DropdownMenuSeparator />
