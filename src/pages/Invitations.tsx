@@ -1,4 +1,5 @@
-import { Link } from "react-router-dom";
+import { useState, useEffect } from "react";
+import { Link, useNavigate } from "react-router-dom";
 import { ProviderLayout } from "@/components/layout/ProviderLayout";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -14,6 +15,9 @@ import {
   CheckCircle2,
   XCircle,
   Eye,
+  Loader2,
+  Copy,
+  ExternalLink,
 } from "lucide-react";
 import {
   DropdownMenu,
@@ -22,89 +26,192 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
+import { useAuth } from "@/hooks/useAuth";
+import { supabase } from "@/integrations/supabase/client";
+import { toast } from "sonner";
+import { Tables } from "@/integrations/supabase/types";
 
-interface Invitation {
-  id: string;
-  patientName: string;
-  patientEmail: string;
-  moduleName: string;
-  status: "pending" | "viewed" | "completed" | "expired";
-  sentAt: string;
-  expiresAt: string;
+type InviteStatus = "pending" | "viewed" | "completed" | "expired";
+
+interface InviteWithModule extends Tables<"invites"> {
+  consent_modules: {
+    name: string;
+  } | null;
 }
 
-const mockInvitations: Invitation[] = [
-  {
-    id: "1",
-    patientName: "Sarah Johnson",
-    patientEmail: "sarah.j@email.com",
-    moduleName: "Surgical Consent - Knee Replacement",
-    status: "completed",
-    sentAt: "2024-01-07 08:00 AM",
-    expiresAt: "2024-01-14",
-  },
-  {
-    id: "2",
-    patientName: "Michael Chen",
-    patientEmail: "m.chen@email.com",
-    moduleName: "Anesthesia Consent",
-    status: "viewed",
-    sentAt: "2024-01-07 09:30 AM",
-    expiresAt: "2024-01-14",
-  },
-  {
-    id: "3",
-    patientName: "Emily Rodriguez",
-    patientEmail: "emily.r@email.com",
-    moduleName: "MRI Procedure Consent",
-    status: "pending",
-    sentAt: "2024-01-06 02:15 PM",
-    expiresAt: "2024-01-13",
-  },
-  {
-    id: "4",
-    patientName: "James Wilson",
-    patientEmail: "jwilson@email.com",
-    moduleName: "Physical Therapy Consent",
-    status: "completed",
-    sentAt: "2024-01-05 11:00 AM",
-    expiresAt: "2024-01-12",
-  },
-  {
-    id: "5",
-    patientName: "Lisa Anderson",
-    patientEmail: "l.anderson@email.com",
-    moduleName: "Blood Work Consent",
-    status: "expired",
-    sentAt: "2023-12-28 03:45 PM",
-    expiresAt: "2024-01-04",
-  },
-];
-
-const statusConfig = {
+const statusConfig: Record<InviteStatus, { variant: "default" | "secondary" | "destructive" | "outline"; label: string; icon: typeof Clock }> = {
   pending: {
-    variant: "pending" as const,
+    variant: "secondary",
     label: "Pending",
     icon: Clock,
   },
   viewed: {
-    variant: "warning" as const,
+    variant: "outline",
     label: "Viewed",
     icon: Eye,
   },
   completed: {
-    variant: "success" as const,
+    variant: "default",
     label: "Completed",
     icon: CheckCircle2,
   },
   expired: {
-    variant: "destructive" as const,
+    variant: "destructive",
     label: "Expired",
     icon: XCircle,
   },
 };
 
 export default function Invitations() {
+  const { user, isLoading: authLoading } = useAuth();
+  const navigate = useNavigate();
+  const [invitations, setInvitations] = useState<InviteWithModule[]>([]);
+  const [isLoading, setIsLoading] = useState(true);
+  const [searchQuery, setSearchQuery] = useState("");
+  const [statusFilter, setStatusFilter] = useState<InviteStatus | "all">("all");
+  const [deleteInvite, setDeleteInvite] = useState<InviteWithModule | null>(null);
+  const [isDeleting, setIsDeleting] = useState(false);
+
+  useEffect(() => {
+    if (!authLoading && !user) {
+      navigate("/auth");
+    }
+  }, [user, authLoading, navigate]);
+
+  useEffect(() => {
+    if (user) {
+      fetchInvitations();
+    }
+  }, [user]);
+
+  const fetchInvitations = async () => {
+    if (!user) return;
+
+    setIsLoading(true);
+    const { data, error } = await supabase
+      .from("invites")
+      .select(`
+        *,
+        consent_modules (
+          name
+        )
+      `)
+      .eq("created_by", user.id)
+      .order("created_at", { ascending: false });
+
+    if (error) {
+      console.error("Error fetching invitations:", error);
+      toast.error("Failed to load invitations");
+    } else {
+      // Check for expired invites and update status
+      const now = new Date();
+      const updatedInvites = (data || []).map((invite) => {
+        if (
+          invite.status === "pending" &&
+          new Date(invite.expires_at) < now
+        ) {
+          return { ...invite, status: "expired" as const };
+        }
+        return invite;
+      });
+      setInvitations(updatedInvites);
+    }
+    setIsLoading(false);
+  };
+
+  const handleDelete = async () => {
+    if (!deleteInvite) return;
+
+    setIsDeleting(true);
+    const { error } = await supabase
+      .from("invites")
+      .delete()
+      .eq("id", deleteInvite.id);
+
+    if (error) {
+      console.error("Error deleting invitation:", error);
+      toast.error("Failed to delete invitation");
+    } else {
+      toast.success("Invitation deleted");
+      setInvitations(invitations.filter((i) => i.id !== deleteInvite.id));
+    }
+    setIsDeleting(false);
+    setDeleteInvite(null);
+  };
+
+  const handleResend = async (invite: InviteWithModule) => {
+    // Reset expires_at to 7 days from now
+    const newExpiresAt = new Date();
+    newExpiresAt.setDate(newExpiresAt.getDate() + 7);
+
+    const { error } = await supabase
+      .from("invites")
+      .update({
+        expires_at: newExpiresAt.toISOString(),
+        status: "pending",
+      })
+      .eq("id", invite.id);
+
+    if (error) {
+      console.error("Error resending invitation:", error);
+      toast.error("Failed to resend invitation");
+    } else {
+      toast.success("Invitation resent!", {
+        description: `A new link has been generated for ${invite.patient_first_name}.`,
+      });
+      fetchInvitations();
+    }
+  };
+
+  const handleCopyLink = (token: string) => {
+    const link = `${window.location.origin}/consent/${token}`;
+    navigator.clipboard.writeText(link);
+    toast.success("Link copied to clipboard!");
+  };
+
+  const handleSendNew = (invite: InviteWithModule) => {
+    // Navigate to new invitation with pre-filled data
+    navigate(`/invitations/new?module=${invite.module_id}&email=${invite.patient_email}&firstName=${invite.patient_first_name}&lastName=${invite.patient_last_name}`);
+  };
+
+  const filteredInvitations = invitations.filter((invite) => {
+    const matchesSearch =
+      invite.patient_first_name.toLowerCase().includes(searchQuery.toLowerCase()) ||
+      invite.patient_last_name.toLowerCase().includes(searchQuery.toLowerCase()) ||
+      invite.patient_email.toLowerCase().includes(searchQuery.toLowerCase()) ||
+      invite.consent_modules?.name.toLowerCase().includes(searchQuery.toLowerCase());
+
+    const effectiveStatus =
+      invite.status === "pending" && new Date(invite.expires_at) < new Date()
+        ? "expired"
+        : invite.status;
+
+    const matchesStatus =
+      statusFilter === "all" || effectiveStatus === statusFilter;
+
+    return matchesSearch && matchesStatus;
+  });
+
+  if (authLoading || isLoading) {
+    return (
+      <ProviderLayout>
+        <div className="flex items-center justify-center min-h-[400px]">
+          <Loader2 className="h-8 w-8 animate-spin text-muted-foreground" />
+        </div>
+      </ProviderLayout>
+    );
+  }
+
   return (
     <ProviderLayout>
       <div className="space-y-6">
@@ -130,112 +237,215 @@ export default function Invitations() {
             <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
             <Input
               placeholder="Search by patient name or email..."
+              value={searchQuery}
+              onChange={(e) => setSearchQuery(e.target.value)}
               className="pl-9 input-focus-ring"
             />
           </div>
           <div className="flex gap-2 flex-wrap">
-            <Button variant="outline" size="sm">All</Button>
-            <Button variant="ghost" size="sm">Pending</Button>
-            <Button variant="ghost" size="sm">Viewed</Button>
-            <Button variant="ghost" size="sm">Completed</Button>
-            <Button variant="ghost" size="sm">Expired</Button>
+            {(["all", "pending", "viewed", "completed", "expired"] as const).map(
+              (status) => (
+                <Button
+                  key={status}
+                  variant={statusFilter === status ? "outline" : "ghost"}
+                  size="sm"
+                  onClick={() => setStatusFilter(status)}
+                >
+                  {status === "all" ? "All" : status.charAt(0).toUpperCase() + status.slice(1)}
+                </Button>
+              )
+            )}
           </div>
         </div>
 
-        {/* Invitations Table */}
-        <div className="card-elevated overflow-hidden">
-          <div className="overflow-x-auto">
-            <table className="w-full">
-              <thead>
-                <tr className="border-b border-border bg-muted/30">
-                  <th className="text-left text-xs font-medium text-muted-foreground uppercase tracking-wider px-6 py-3">
-                    Patient
-                  </th>
-                  <th className="text-left text-xs font-medium text-muted-foreground uppercase tracking-wider px-6 py-3">
-                    Module
-                  </th>
-                  <th className="text-left text-xs font-medium text-muted-foreground uppercase tracking-wider px-6 py-3">
-                    Sent
-                  </th>
-                  <th className="text-left text-xs font-medium text-muted-foreground uppercase tracking-wider px-6 py-3">
-                    Expires
-                  </th>
-                  <th className="text-left text-xs font-medium text-muted-foreground uppercase tracking-wider px-6 py-3">
-                    Status
-                  </th>
-                  <th className="text-right text-xs font-medium text-muted-foreground uppercase tracking-wider px-6 py-3">
-                    Actions
-                  </th>
-                </tr>
-              </thead>
-              <tbody className="divide-y divide-border">
-                {mockInvitations.map((invitation, index) => {
-                  const status = statusConfig[invitation.status];
-                  const StatusIcon = status.icon;
-                  
-                  return (
-                    <tr
-                      key={invitation.id}
-                      className="hover:bg-muted/30 transition-colors animate-fade-in"
-                      style={{ animationDelay: `${index * 50}ms` }}
-                    >
-                      <td className="px-6 py-4">
-                        <div>
-                          <p className="font-medium text-sm">{invitation.patientName}</p>
-                          <p className="text-xs text-muted-foreground">{invitation.patientEmail}</p>
-                        </div>
-                      </td>
-                      <td className="px-6 py-4">
-                        <span className="text-sm">{invitation.moduleName}</span>
-                      </td>
-                      <td className="px-6 py-4">
-                        <span className="text-sm text-muted-foreground">{invitation.sentAt}</span>
-                      </td>
-                      <td className="px-6 py-4">
-                        <span className="text-sm text-muted-foreground">{invitation.expiresAt}</span>
-                      </td>
-                      <td className="px-6 py-4">
-                        <Badge variant={status.variant} className="gap-1">
-                          <StatusIcon className="h-3 w-3" />
-                          {status.label}
-                        </Badge>
-                      </td>
-                      <td className="px-6 py-4 text-right">
-                        <DropdownMenu>
-                          <DropdownMenuTrigger asChild>
-                            <Button variant="ghost" size="icon" className="h-8 w-8">
-                              <MoreHorizontal className="h-4 w-4" />
-                            </Button>
-                          </DropdownMenuTrigger>
-                          <DropdownMenuContent align="end">
-                            {invitation.status === "pending" || invitation.status === "viewed" ? (
-                              <DropdownMenuItem>
-                                <RefreshCw className="h-4 w-4 mr-2" />
-                                Resend
-                              </DropdownMenuItem>
-                            ) : null}
-                            {invitation.status === "expired" && (
-                              <DropdownMenuItem>
-                                <Send className="h-4 w-4 mr-2" />
-                                Send New Invite
-                              </DropdownMenuItem>
-                            )}
-                            <DropdownMenuSeparator />
-                            <DropdownMenuItem className="text-destructive">
-                              <Trash2 className="h-4 w-4 mr-2" />
-                              Delete
-                            </DropdownMenuItem>
-                          </DropdownMenuContent>
-                        </DropdownMenu>
-                      </td>
-                    </tr>
-                  );
-                })}
-              </tbody>
-            </table>
+        {/* Empty State */}
+        {filteredInvitations.length === 0 && !isLoading && (
+          <div className="text-center py-12">
+            <Send className="h-12 w-12 text-muted-foreground mx-auto mb-4" />
+            <h3 className="text-lg font-semibold mb-2">
+              {invitations.length === 0
+                ? "No invitations yet"
+                : "No invitations match your search"}
+            </h3>
+            <p className="text-muted-foreground mb-4">
+              {invitations.length === 0
+                ? "Send your first consent invitation to a patient"
+                : "Try adjusting your search or filter"}
+            </p>
+            {invitations.length === 0 && (
+              <Button asChild>
+                <Link to="/invitations/new">
+                  <Plus className="h-4 w-4 mr-2" />
+                  Send Invitation
+                </Link>
+              </Button>
+            )}
           </div>
-        </div>
+        )}
+
+        {/* Invitations Table */}
+        {filteredInvitations.length > 0 && (
+          <div className="card-elevated overflow-hidden">
+            <div className="overflow-x-auto">
+              <table className="w-full">
+                <thead>
+                  <tr className="border-b border-border bg-muted/30">
+                    <th className="text-left text-xs font-medium text-muted-foreground uppercase tracking-wider px-6 py-3">
+                      Patient
+                    </th>
+                    <th className="text-left text-xs font-medium text-muted-foreground uppercase tracking-wider px-6 py-3">
+                      Module
+                    </th>
+                    <th className="text-left text-xs font-medium text-muted-foreground uppercase tracking-wider px-6 py-3">
+                      Sent
+                    </th>
+                    <th className="text-left text-xs font-medium text-muted-foreground uppercase tracking-wider px-6 py-3">
+                      Expires
+                    </th>
+                    <th className="text-left text-xs font-medium text-muted-foreground uppercase tracking-wider px-6 py-3">
+                      Status
+                    </th>
+                    <th className="text-right text-xs font-medium text-muted-foreground uppercase tracking-wider px-6 py-3">
+                      Actions
+                    </th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-border">
+                  {filteredInvitations.map((invitation, index) => {
+                    const effectiveStatus =
+                      invitation.status === "pending" &&
+                      new Date(invitation.expires_at) < new Date()
+                        ? "expired"
+                        : (invitation.status as InviteStatus);
+                    const status = statusConfig[effectiveStatus];
+                    const StatusIcon = status.icon;
+
+                    return (
+                      <tr
+                        key={invitation.id}
+                        className="hover:bg-muted/30 transition-colors animate-fade-in"
+                        style={{ animationDelay: `${index * 50}ms` }}
+                      >
+                        <td className="px-6 py-4">
+                          <div>
+                            <p className="font-medium text-sm">
+                              {invitation.patient_first_name} {invitation.patient_last_name}
+                            </p>
+                            <p className="text-xs text-muted-foreground">
+                              {invitation.patient_email}
+                            </p>
+                          </div>
+                        </td>
+                        <td className="px-6 py-4">
+                          <span className="text-sm">
+                            {invitation.consent_modules?.name || "Unknown Module"}
+                          </span>
+                        </td>
+                        <td className="px-6 py-4">
+                          <span className="text-sm text-muted-foreground">
+                            {new Date(invitation.created_at).toLocaleDateString()}
+                          </span>
+                        </td>
+                        <td className="px-6 py-4">
+                          <span className="text-sm text-muted-foreground">
+                            {new Date(invitation.expires_at).toLocaleDateString()}
+                          </span>
+                        </td>
+                        <td className="px-6 py-4">
+                          <Badge variant={status.variant} className="gap-1">
+                            <StatusIcon className="h-3 w-3" />
+                            {status.label}
+                          </Badge>
+                        </td>
+                        <td className="px-6 py-4 text-right">
+                          <DropdownMenu>
+                            <DropdownMenuTrigger asChild>
+                              <Button variant="ghost" size="icon" className="h-8 w-8">
+                                <MoreHorizontal className="h-4 w-4" />
+                              </Button>
+                            </DropdownMenuTrigger>
+                            <DropdownMenuContent align="end">
+                              {effectiveStatus !== "completed" && effectiveStatus !== "expired" && (
+                                <>
+                                  <DropdownMenuItem
+                                    onClick={() => handleCopyLink(invitation.token)}
+                                  >
+                                    <Copy className="h-4 w-4 mr-2" />
+                                    Copy Link
+                                  </DropdownMenuItem>
+                                  <DropdownMenuItem asChild>
+                                    <a
+                                      href={`/consent/${invitation.token}`}
+                                      target="_blank"
+                                      rel="noopener noreferrer"
+                                    >
+                                      <ExternalLink className="h-4 w-4 mr-2" />
+                                      Open Link
+                                    </a>
+                                  </DropdownMenuItem>
+                                </>
+                              )}
+                              {(effectiveStatus === "pending" || effectiveStatus === "viewed") && (
+                                <DropdownMenuItem onClick={() => handleResend(invitation)}>
+                                  <RefreshCw className="h-4 w-4 mr-2" />
+                                  Resend
+                                </DropdownMenuItem>
+                              )}
+                              {effectiveStatus === "expired" && (
+                                <DropdownMenuItem onClick={() => handleSendNew(invitation)}>
+                                  <Send className="h-4 w-4 mr-2" />
+                                  Send New Invite
+                                </DropdownMenuItem>
+                              )}
+                              <DropdownMenuSeparator />
+                              <DropdownMenuItem
+                                className="text-destructive"
+                                onClick={() => setDeleteInvite(invitation)}
+                              >
+                                <Trash2 className="h-4 w-4 mr-2" />
+                                Delete
+                              </DropdownMenuItem>
+                            </DropdownMenuContent>
+                          </DropdownMenu>
+                        </td>
+                      </tr>
+                    );
+                  })}
+                </tbody>
+              </table>
+            </div>
+          </div>
+        )}
       </div>
+
+      {/* Delete Confirmation Dialog */}
+      <AlertDialog open={!!deleteInvite} onOpenChange={() => setDeleteInvite(null)}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Delete Invitation</AlertDialogTitle>
+            <AlertDialogDescription>
+              Are you sure you want to delete the invitation for{" "}
+              {deleteInvite?.patient_first_name} {deleteInvite?.patient_last_name}? This
+              action cannot be undone.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel disabled={isDeleting}>Cancel</AlertDialogCancel>
+            <AlertDialogAction
+              onClick={handleDelete}
+              disabled={isDeleting}
+              className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+            >
+              {isDeleting ? (
+                <Loader2 className="h-4 w-4 animate-spin mr-2" />
+              ) : (
+                <Trash2 className="h-4 w-4 mr-2" />
+              )}
+              Delete
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </ProviderLayout>
   );
 }
