@@ -222,6 +222,19 @@ export default function ConsentSigning() {
       return;
     }
 
+    // Generate PDF in background (don't wait for it)
+    if (submissionId) {
+      supabase.functions.invoke("generate-consent-pdf", {
+        body: { submissionId },
+      }).then(({ error: pdfError }) => {
+        if (pdfError) {
+          console.error("Error generating PDF:", pdfError);
+        } else {
+          console.log("PDF generated successfully");
+        }
+      });
+    }
+
     setIsComplete(true);
     toast.success("Consent submitted successfully!");
     setIsSubmitting(false);
