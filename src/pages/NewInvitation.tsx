@@ -22,7 +22,7 @@ import { Tables } from "@/integrations/supabase/types";
 export default function NewInvitation() {
   const navigate = useNavigate();
   const [searchParams] = useSearchParams();
-  const { user, isLoading: authLoading } = useAuth();
+  const { user, profile, isLoading: authLoading } = useAuth();
   
   const [modules, setModules] = useState<Tables<"consent_modules">[]>([]);
   const [isLoadingModules, setIsLoadingModules] = useState(true);
@@ -121,13 +121,51 @@ export default function NewInvitation() {
       return;
     }
 
-    // Copy the link to clipboard
+    // Get the consent link
     const consentLink = `${window.location.origin}/consent/${data.token}`;
-    await navigator.clipboard.writeText(consentLink);
 
-    toast.success("Invitation created!", {
-      description: `The consent link has been copied to your clipboard. Send it to ${firstName} ${lastName}.`,
-    });
+    // Get selected module name
+    const selectedModuleData = modules.find((m) => m.id === selectedModule);
+
+    // Send email via edge function
+    try {
+      const { data: emailResponse, error: emailError } = await supabase.functions.invoke(
+        "send-invite-email",
+        {
+          body: {
+            inviteId: data.id,
+            patientFirstName: firstName.trim(),
+            patientLastName: lastName.trim(),
+            patientEmail: email.trim().toLowerCase(),
+            moduleName: selectedModuleData?.name || "Consent Form",
+            providerName: profile?.full_name || user.email?.split("@")[0] || "Your Provider",
+            practiceName: profile?.practice_name || "",
+            customMessage: customMessage.trim() || undefined,
+            consentLink,
+          },
+        }
+      );
+
+      if (emailError) {
+        console.error("Error sending email:", emailError);
+        // Still copy link to clipboard as fallback
+        await navigator.clipboard.writeText(consentLink);
+        toast.success("Invitation created!", {
+          description: `Email failed to send, but the link has been copied to your clipboard.`,
+        });
+      } else {
+        toast.success("Invitation sent!", {
+          description: `${firstName} ${lastName} will receive an email with the consent link.`,
+        });
+      }
+    } catch (emailErr) {
+      console.error("Error invoking email function:", emailErr);
+      await navigator.clipboard.writeText(consentLink);
+      toast.success("Invitation created!", {
+        description: `Email service unavailable. Link copied to clipboard.`,
+      });
+    }
+
     navigate("/invitations");
   };
 
