@@ -609,8 +609,16 @@ export default function ConsentSigning() {
                 <FileText className="h-5 w-5 text-primary" />
                 <h2 className="font-semibold">Consent Information</h2>
               </div>
-              <div className="prose prose-sm max-w-none text-muted-foreground">
-                <p>{invite.module_description}</p>
+              <div className="max-h-96 overflow-y-auto pr-2">
+                <div className="space-y-4 text-sm leading-relaxed text-foreground/80">
+                  {invite.module_description.split('\n').map((paragraph, index) => (
+                    paragraph.trim() && (
+                      <p key={index} className="text-justify">
+                        {paragraph}
+                      </p>
+                    )
+                  ))}
+                </div>
               </div>
             </div>
           )}
