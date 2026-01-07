@@ -1,30 +1,18 @@
 import { useState, useEffect } from "react";
-import { useParams, useNavigate } from "react-router-dom";
+import { useParams } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Checkbox } from "@/components/ui/checkbox";
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select";
 import { 
   Shield, 
   Video, 
   FileText, 
   CheckCircle2,
   AlertCircle,
-  Building2,
-  User,
-  Calendar,
   Loader2,
   UserPlus,
   UserCheck,
-  Mail,
-  Phone,
 } from "lucide-react";
 import { toast } from "sonner";
 import { supabase } from "@/integrations/supabase/client";
@@ -38,23 +26,18 @@ interface InviteData {
   custom_message: string | null;
   status: string;
   expires_at: string;
-  consent_modules: {
-    id: string;
-    name: string;
-    description: string | null;
-    video_url: string | null;
-  } | null;
-  provider_profiles: {
-    full_name: string;
-    practice_name: string | null;
-  } | null;
+  module_id: string;
+  module_name: string;
+  module_description: string | null;
+  module_video_url: string | null;
+  provider_full_name: string | null;
+  provider_practice_name: string | null;
 }
 
 type OnboardingMode = "choice" | "guest" | "account" | "complete";
 
 export default function ConsentSigning() {
   const { token } = useParams();
-  const navigate = useNavigate();
   
   const [isLoading, setIsLoading] = useState(true);
   const [invite, setInvite] = useState<InviteData | null>(null);
@@ -90,76 +73,52 @@ export default function ConsentSigning() {
 
     setIsLoading(true);
     
-    // Fetch invite with module and provider info
-    const { data, error } = await supabase
-      .from("invites")
-      .select(`
-        *,
-        consent_modules (
-          id,
-          name,
-          description,
-          video_url
-        )
-      `)
-      .eq("token", token)
-      .maybeSingle();
+    // Use the secure RPC function to fetch invite by token
+    const { data, error: fetchError } = await supabase
+      .rpc("get_invite_by_token", { p_token: token });
 
-    if (error) {
-      console.error("Error fetching invite:", error);
+    if (fetchError) {
+      console.error("Error fetching invite:", fetchError);
       setError("Failed to load consent form");
       setIsLoading(false);
       return;
     }
 
-    if (!data) {
+    if (!data || data.length === 0) {
       setError("This consent link is invalid or has expired");
       setIsLoading(false);
       return;
     }
 
+    const inviteData = data[0] as InviteData;
+
     // Check if expired
-    if (new Date(data.expires_at) < new Date()) {
+    if (new Date(inviteData.expires_at) < new Date()) {
       setError("This consent link has expired. Please request a new one from your provider.");
       setIsLoading(false);
       return;
     }
 
     // Check if already completed
-    if (data.status === "completed") {
+    if (inviteData.status === "completed") {
       setError("This consent form has already been signed.");
       setIsLoading(false);
       return;
     }
 
-    // Fetch provider profile separately
-    const { data: providerData } = await supabase
-      .from("provider_profiles")
-      .select("full_name, practice_name")
-      .eq("user_id", data.created_by)
-      .maybeSingle();
-
-    const inviteWithProvider = {
-      ...data,
-      provider_profiles: providerData,
-    } as InviteData;
-
-    setInvite(inviteWithProvider);
-    setEmail(data.patient_email);
+    setInvite(inviteData);
+    setEmail(inviteData.patient_email);
     
     // If patient info already exists, skip to consent
-    if (data.patient_first_name && data.patient_last_name) {
-      setFirstName(data.patient_first_name);
-      setLastName(data.patient_last_name);
+    if (inviteData.patient_first_name && inviteData.patient_last_name) {
+      setFirstName(inviteData.patient_first_name);
+      setLastName(inviteData.patient_last_name);
       setOnboardingMode("complete");
     }
 
     // Update status to viewed if pending
-    if (data.status === "pending") {
-      await supabase
-        .from("invites")
-        .update({ status: "viewed", viewed_at: new Date().toISOString() })
-        .eq("id", data.id);
+    if (inviteData.status === "pending") {
+      await supabase.rpc("mark_invite_viewed", { p_token: token });
     }
 
     setIsLoading(false);
@@ -171,14 +130,12 @@ export default function ConsentSigning() {
       return;
     }
 
-    // Update invite with patient info
-    const { error } = await supabase
-      .from("invites")
-      .update({
-        patient_first_name: firstName.trim(),
-        patient_last_name: lastName.trim(),
-      })
-      .eq("id", invite?.id);
+    // Update invite with patient info using RPC
+    const { error } = await supabase.rpc("update_invite_patient_info_by_token", {
+      p_token: token,
+      p_first_name: firstName.trim(),
+      p_last_name: lastName.trim(),
+    });
 
     if (error) {
       console.error("Error updating invite:", error);
@@ -231,15 +188,14 @@ export default function ConsentSigning() {
       return;
     }
 
-    // Update invite with patient info and user_id
-    await supabase
-      .from("invites")
-      .update({
-        patient_first_name: firstName.trim(),
-        patient_last_name: lastName.trim(),
-        patient_user_id: authData.user?.id,
-      })
-      .eq("id", invite?.id);
+    // Link patient user to invite using RPC
+    if (authData.user) {
+      await supabase.rpc("link_invite_patient_user_by_token", {
+        p_token: token,
+        p_first_name: firstName.trim(),
+        p_last_name: lastName.trim(),
+      });
+    }
 
     toast.success("Account created! You can now sign the consent.");
     setOnboardingMode("complete");
@@ -247,22 +203,17 @@ export default function ConsentSigning() {
   };
 
   const handleSubmit = async () => {
-    if (!canSubmit || !invite) return;
+    if (!canSubmit || !invite || !token) return;
 
     setIsSubmitting(true);
 
-    // Create consent submission
-    const { error } = await supabase
-      .from("consent_submissions")
-      .insert({
-        invite_id: invite.id,
-        module_id: invite.consent_modules?.id,
-        provider_id: invite.provider_profiles ? undefined : undefined,
-        patient_first_name: firstName,
-        patient_last_name: lastName,
-        patient_email: email,
-        signature: signature.trim(),
-      });
+    // Submit consent using secure RPC
+    const { data: submissionId, error } = await supabase.rpc("submit_consent_by_token", {
+      p_token: token,
+      p_patient_first_name: firstName,
+      p_patient_last_name: lastName,
+      p_signature: signature.trim(),
+    });
 
     if (error) {
       console.error("Error submitting consent:", error);
@@ -271,22 +222,13 @@ export default function ConsentSigning() {
       return;
     }
 
-    // Update invite status to completed
-    await supabase
-      .from("invites")
-      .update({
-        status: "completed",
-        completed_at: new Date().toISOString(),
-      })
-      .eq("id", invite.id);
-
     setIsComplete(true);
     toast.success("Consent submitted successfully!");
     setIsSubmitting(false);
   };
 
   const canSubmit = 
-    (invite?.consent_modules?.video_url ? videoWatched : true) && 
+    (invite?.module_video_url ? videoWatched : true) && 
     materialsReviewed && 
     agreementChecked && 
     signature.trim().length > 0;
@@ -336,7 +278,7 @@ export default function ConsentSigning() {
           <div className="p-4 rounded-xl bg-muted text-left">
             <div className="flex items-center gap-2 text-sm mb-2">
               <FileText className="h-4 w-4 text-primary" />
-              <span className="font-medium">{invite?.consent_modules?.name}</span>
+              <span className="font-medium">{invite?.module_name}</span>
             </div>
             <p className="text-xs text-muted-foreground">
               Signed on {currentDate} by {signature}
@@ -372,9 +314,9 @@ export default function ConsentSigning() {
             </h1>
             <p className="text-muted-foreground">
               You've been invited to sign a consent form by{" "}
-              <strong>{invite?.provider_profiles?.full_name || "your provider"}</strong>
-              {invite?.provider_profiles?.practice_name && (
-                <> from <strong>{invite.provider_profiles.practice_name}</strong></>
+              <strong>{invite?.provider_full_name || "your provider"}</strong>
+              {invite?.provider_practice_name && (
+                <> from <strong>{invite.provider_practice_name}</strong></>
               )}
             </p>
           </div>
@@ -383,7 +325,7 @@ export default function ConsentSigning() {
             <div className="card-elevated p-4 mb-8 bg-primary/5 border-primary/20">
               <p className="text-sm italic">"{invite.custom_message}"</p>
               <p className="text-xs text-muted-foreground mt-2">
-                — {invite.provider_profiles?.full_name}
+                — {invite.provider_full_name}
               </p>
             </div>
           )}
@@ -391,7 +333,7 @@ export default function ConsentSigning() {
           <div className="card-elevated p-6 mb-6">
             <div className="flex items-center gap-3 mb-4">
               <FileText className="h-5 w-5 text-primary" />
-              <h2 className="font-semibold">{invite?.consent_modules?.name}</h2>
+              <h2 className="font-semibold">{invite?.module_name}</h2>
             </div>
             <p className="text-sm text-muted-foreground">
               Before signing, we need a few details from you.
@@ -498,47 +440,31 @@ export default function ConsentSigning() {
             <div className="space-y-2">
               <Label htmlFor="email">Email Address</Label>
               <div className="relative">
-                <Mail className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
                 <Input
                   id="email"
                   type="email"
                   value={email}
-                  onChange={(e) => setEmail(e.target.value)}
-                  className="pl-10 input-focus-ring"
-                  disabled={onboardingMode === "guest"}
+                  disabled
+                  className="bg-muted"
                 />
               </div>
+              <p className="text-xs text-muted-foreground">
+                This is the email address your provider used to send you this invitation.
+              </p>
             </div>
 
             {onboardingMode === "account" && (
               <>
                 <div className="space-y-2">
-                  <Label htmlFor="phone">Phone Number</Label>
-                  <div className="relative">
-                    <Phone className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-                    <Input
-                      id="phone"
-                      type="tel"
-                      placeholder="+1 (555) 123-4567"
-                      value={phone}
-                      onChange={(e) => setPhone(e.target.value)}
-                      className="pl-10 input-focus-ring"
-                    />
-                  </div>
-                </div>
-
-                <div className="space-y-2">
-                  <Label htmlFor="preferredContact">Preferred Contact Method</Label>
-                  <Select value={preferredContact} onValueChange={setPreferredContact}>
-                    <SelectTrigger className="input-focus-ring">
-                      <SelectValue />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="email">Email</SelectItem>
-                      <SelectItem value="phone">Phone</SelectItem>
-                      <SelectItem value="text">Text Message</SelectItem>
-                    </SelectContent>
-                  </Select>
+                  <Label htmlFor="phone">Phone Number (Optional)</Label>
+                  <Input
+                    id="phone"
+                    type="tel"
+                    placeholder="(555) 123-4567"
+                    value={phone}
+                    onChange={(e) => setPhone(e.target.value)}
+                    className="input-focus-ring"
+                  />
                 </div>
 
                 <div className="space-y-2">
@@ -568,17 +494,17 @@ export default function ConsentSigning() {
             )}
 
             <Button
-              className="w-full"
               onClick={onboardingMode === "guest" ? handleGuestContinue : handleAccountCreate}
+              className="w-full"
               disabled={isSubmitting}
             >
               {isSubmitting ? (
                 <>
                   <Loader2 className="h-4 w-4 mr-2 animate-spin" />
-                  {onboardingMode === "account" ? "Creating Account..." : "Continuing..."}
+                  {onboardingMode === "guest" ? "Saving..." : "Creating Account..."}
                 </>
               ) : (
-                <>Continue to Consent Form</>
+                onboardingMode === "guest" ? "Continue to Consent" : "Create Account & Continue"
               )}
             </Button>
           </div>
@@ -587,185 +513,144 @@ export default function ConsentSigning() {
     );
   }
 
-  // Main consent signing view
+  // Main consent signing form
   return (
     <div className="min-h-screen bg-background">
-      {/* Header */}
       <header className="sticky top-0 z-50 border-b border-border bg-background/95 backdrop-blur">
-        <div className="container flex h-16 items-center justify-between">
+        <div className="container flex h-16 items-center">
           <div className="flex items-center gap-2.5">
             <div className="flex h-9 w-9 items-center justify-center rounded-lg bg-primary text-primary-foreground">
               <Shield className="h-5 w-5" />
             </div>
             <span className="font-display text-xl font-bold">ClearConsent</span>
           </div>
-          <div className="text-right">
-            <p className="text-sm font-medium">{firstName} {lastName}</p>
-            <p className="text-xs text-muted-foreground">{currentDate}</p>
-          </div>
         </div>
       </header>
 
       <main className="container py-8 max-w-3xl">
-        <div className="space-y-8 animate-fade-in">
-          {/* Provider Info */}
-          <div className="card-elevated p-6">
-            <div className="flex items-start gap-4">
-              <div className="p-3 rounded-xl bg-primary/10">
-                <Building2 className="h-6 w-6 text-primary" />
-              </div>
-              <div>
-                <p className="text-sm text-muted-foreground">Consent requested by</p>
-                <p className="font-semibold text-lg">
-                  {invite?.provider_profiles?.full_name || "Your Provider"}
-                </p>
-                {invite?.provider_profiles?.practice_name && (
-                  <p className="text-sm text-muted-foreground">
-                    {invite.provider_profiles.practice_name}
-                  </p>
-                )}
-              </div>
-            </div>
-          </div>
+        <div className="mb-8">
+          <h1 className="text-2xl sm:text-3xl font-bold font-display mb-2">
+            {invite?.module_name}
+          </h1>
+          <p className="text-muted-foreground">
+            Please review the information below and provide your signature.
+          </p>
+        </div>
 
-          {/* Module Title */}
-          <div>
-            <h1 className="text-2xl sm:text-3xl font-bold font-display mb-2">
-              {invite?.consent_modules?.name}
-            </h1>
-            <div className="flex items-center gap-2 text-sm text-muted-foreground">
-              <Calendar className="h-4 w-4" />
-              {currentDate}
-            </div>
-          </div>
-
-          {/* Educational Video */}
-          {invite?.consent_modules?.video_url && (
-            <div className="card-elevated p-6 space-y-4">
-              <div className="flex items-center justify-between">
-                <h2 className="font-semibold flex items-center gap-2">
-                  <Video className="h-5 w-5 text-primary" />
-                  Educational Video
-                </h2>
-                {!videoWatched && (
-                  <span className="text-xs text-orange-500 flex items-center gap-1">
-                    <AlertCircle className="h-3 w-3" />
-                    Required viewing
-                  </span>
-                )}
+        <div className="space-y-6">
+          {/* Video Section */}
+          {invite?.module_video_url && (
+            <div className="card-elevated p-6">
+              <div className="flex items-center gap-3 mb-4">
+                <Video className="h-5 w-5 text-primary" />
+                <h2 className="font-semibold">Educational Video</h2>
               </div>
-              <div className="aspect-video rounded-xl overflow-hidden bg-muted">
-                <iframe
-                  src={invite.consent_modules.video_url}
+              <div className="aspect-video bg-muted rounded-lg overflow-hidden mb-4">
+                <video
+                  src={invite.module_video_url}
+                  controls
                   className="w-full h-full"
-                  allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
-                  allowFullScreen
+                  onEnded={() => setVideoWatched(true)}
                 />
               </div>
-              <div className="flex items-center gap-3">
+              <div className="flex items-center gap-2">
                 <Checkbox
                   id="videoWatched"
                   checked={videoWatched}
-                  onCheckedChange={(checked) => setVideoWatched(checked as boolean)}
+                  onCheckedChange={(checked) => setVideoWatched(checked === true)}
                 />
                 <Label htmlFor="videoWatched" className="text-sm cursor-pointer">
-                  I have watched the educational video
+                  I have watched and understood the educational video
                 </Label>
               </div>
             </div>
           )}
 
-          {/* Consent Text */}
-          <div className="card-elevated p-6 space-y-4">
-            <h2 className="font-semibold flex items-center gap-2">
-              <FileText className="h-5 w-5 text-primary" />
-              Consent Agreement
-            </h2>
-            <div className="max-h-[400px] overflow-y-auto p-4 rounded-xl bg-muted/50 border border-border">
-              <p className="whitespace-pre-wrap text-sm leading-relaxed">
-                {invite?.consent_modules?.description || "No consent text provided."}
-              </p>
+          {/* Description Section */}
+          {invite?.module_description && (
+            <div className="card-elevated p-6">
+              <div className="flex items-center gap-3 mb-4">
+                <FileText className="h-5 w-5 text-primary" />
+                <h2 className="font-semibold">Consent Information</h2>
+              </div>
+              <div className="prose prose-sm max-w-none text-muted-foreground">
+                <p>{invite.module_description}</p>
+              </div>
             </div>
-          </div>
+          )}
 
-          {/* Agreement Section */}
-          <div className="card-elevated p-6 space-y-6">
-            <h2 className="font-semibold flex items-center gap-2">
-              <User className="h-5 w-5 text-primary" />
-              Your Agreement
-            </h2>
-
+          {/* Acknowledgment Section */}
+          <div className="card-elevated p-6">
+            <h2 className="font-semibold mb-4">Acknowledgment</h2>
             <div className="space-y-4">
               <div className="flex items-start gap-3">
                 <Checkbox
                   id="materialsReviewed"
                   checked={materialsReviewed}
-                  onCheckedChange={(checked) => setMaterialsReviewed(checked as boolean)}
+                  onCheckedChange={(checked) => setMaterialsReviewed(checked === true)}
                 />
                 <Label htmlFor="materialsReviewed" className="text-sm cursor-pointer leading-relaxed">
-                  I have reviewed all educational materials and the consent text above. I understand the information provided.
+                  I have reviewed all the consent materials and understand the information provided.
                 </Label>
               </div>
-
               <div className="flex items-start gap-3">
                 <Checkbox
                   id="agreementChecked"
                   checked={agreementChecked}
-                  onCheckedChange={(checked) => setAgreementChecked(checked as boolean)}
+                  onCheckedChange={(checked) => setAgreementChecked(checked === true)}
                 />
                 <Label htmlFor="agreementChecked" className="text-sm cursor-pointer leading-relaxed">
-                  I agree to the terms of this consent form. I understand that by typing my name below, I am providing my legal digital signature.
+                  I voluntarily agree to the procedure/treatment described and understand the risks, benefits, and alternatives.
                 </Label>
               </div>
             </div>
-
-            <div className="space-y-2">
-              <Label htmlFor="signature">Digital Signature (Type your legal full name)</Label>
-              <Input
-                id="signature"
-                placeholder={`e.g., ${firstName} ${lastName}`}
-                value={signature}
-                onChange={(e) => setSignature(e.target.value)}
-                className="text-lg font-medium h-14 input-focus-ring"
-              />
-            </div>
-
-            <Button
-              size="lg"
-              className="w-full"
-              disabled={!canSubmit || isSubmitting}
-              onClick={handleSubmit}
-            >
-              {isSubmitting ? (
-                <>
-                  <Loader2 className="h-4 w-4 mr-2 animate-spin" />
-                  Submitting...
-                </>
-              ) : (
-                <>
-                  <CheckCircle2 className="h-5 w-5 mr-2" />
-                  Submit Signed Consent
-                </>
-              )}
-            </Button>
-
-            {!canSubmit && (
-              <p className="text-xs text-center text-muted-foreground">
-                Please complete all required fields above to submit your consent.
-              </p>
-            )}
           </div>
-        </div>
-      </main>
 
-      {/* Footer */}
-      <footer className="border-t border-border mt-12">
-        <div className="container py-6 text-center">
-          <p className="text-xs text-muted-foreground">
-            This consent form is secured with encryption. Your information is protected.
+          {/* Signature Section */}
+          <div className="card-elevated p-6">
+            <h2 className="font-semibold mb-4">Digital Signature</h2>
+            <div className="space-y-4">
+              <div className="space-y-2">
+                <Label htmlFor="signature">Type your full legal name as your signature</Label>
+                <Input
+                  id="signature"
+                  placeholder="e.g., Sarah Johnson"
+                  value={signature}
+                  onChange={(e) => setSignature(e.target.value)}
+                  className="input-focus-ring text-lg"
+                />
+              </div>
+              <p className="text-xs text-muted-foreground">
+                By typing your name above, you acknowledge that this constitutes a legal signature.
+              </p>
+            </div>
+          </div>
+
+          {/* Submit Button */}
+          <Button
+            onClick={handleSubmit}
+            disabled={!canSubmit || isSubmitting}
+            size="lg"
+            className="w-full"
+          >
+            {isSubmitting ? (
+              <>
+                <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                Submitting...
+              </>
+            ) : (
+              <>
+                <CheckCircle2 className="h-4 w-4 mr-2" />
+                Submit Signed Consent
+              </>
+            )}
+          </Button>
+
+          <p className="text-xs text-center text-muted-foreground">
+            Date: {currentDate}
           </p>
         </div>
-      </footer>
+      </main>
     </div>
   );
 }
