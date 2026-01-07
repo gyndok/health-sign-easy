@@ -190,26 +190,31 @@ export default function Invitations() {
     navigate(`/invitations/new?module=${invite.module_id}&email=${invite.patient_email}`);
   };
 
-  const handleGeneratePdf = async (invite: InviteWithModule) => {
+  const openPdf = async (invite: InviteWithModule, regenerate: boolean) => {
     const submissionId = invite.consent_submissions?.[0]?.id;
     if (!submissionId) {
       toast.error("No submission found for this invitation");
       return;
     }
 
-    toast.loading("Generating PDF...", { id: "pdf-gen" });
+    const toastId = regenerate ? "pdf-regen" : "pdf-download";
+    toast.loading(regenerate ? "Regenerating PDF..." : "Preparing PDF...", { id: toastId });
 
     const { data, error } = await supabase.functions.invoke("generate-consent-pdf", {
-      body: { submissionId },
+      body: { submissionId, regenerate },
     });
 
-    if (error) {
-      console.error("Error generating PDF:", error);
-      toast.error("Failed to generate PDF", { id: "pdf-gen" });
-    } else {
-      toast.success("PDF generated successfully!", { id: "pdf-gen" });
-      fetchInvitations(); // Refresh to get the new pdf_url
+    if (error || !data?.pdfUrl) {
+      console.error("PDF error:", error);
+      toast.error("Failed to open PDF", { id: toastId });
+      return;
     }
+
+    toast.success("Opening PDF...", { id: toastId });
+    window.open(data.pdfUrl, "_blank", "noopener,noreferrer");
+
+    // Keep list fresh (pdf_url may update)
+    fetchInvitations();
   };
 
   const filteredInvitations = invitations.filter((invite) => {
@@ -427,23 +432,17 @@ export default function Invitations() {
                                   Send New Invite
                                 </DropdownMenuItem>
                               )}
-                              {effectiveStatus === "completed" && invitation.consent_submissions?.[0]?.pdf_url && (
-                                <DropdownMenuItem asChild>
-                                  <a
-                                    href={invitation.consent_submissions[0].pdf_url}
-                                    target="_blank"
-                                    rel="noopener noreferrer"
-                                  >
+                              {effectiveStatus === "completed" && (
+                                <>
+                                  <DropdownMenuItem onClick={() => openPdf(invitation, false)}>
                                     <FileDown className="h-4 w-4 mr-2" />
                                     Download PDF
-                                  </a>
-                                </DropdownMenuItem>
-                              )}
-                              {effectiveStatus === "completed" && !invitation.consent_submissions?.[0]?.pdf_url && (
-                                <DropdownMenuItem onClick={() => handleGeneratePdf(invitation)}>
-                                  <FileDown className="h-4 w-4 mr-2" />
-                                  Generate PDF
-                                </DropdownMenuItem>
+                                  </DropdownMenuItem>
+                                  <DropdownMenuItem onClick={() => openPdf(invitation, true)}>
+                                    <RefreshCw className="h-4 w-4 mr-2" />
+                                    Regenerate PDF
+                                  </DropdownMenuItem>
+                                </>
                               )}
                               <DropdownMenuSeparator />
                               <DropdownMenuItem
