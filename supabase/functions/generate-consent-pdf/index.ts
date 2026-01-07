@@ -9,6 +9,7 @@ const corsHeaders = {
 
 interface GeneratePdfRequest {
   submissionId: string;
+  regenerate?: boolean;
 }
 
 serve(async (req) => {
@@ -22,17 +23,18 @@ serve(async (req) => {
     const supabaseServiceKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
     const supabase = createClient(supabaseUrl, supabaseServiceKey);
 
-    const { submissionId }: GeneratePdfRequest = await req.json();
-    console.log("Generating PDF for submission:", submissionId);
+    const { submissionId, regenerate = true }: GeneratePdfRequest = await req.json();
+    console.log("Consent PDF request:", { submissionId, regenerate });
 
     if (!submissionId) {
       throw new Error("submissionId is required");
     }
 
-    // Fetch submission with related data
+    // Fetch submission (we need provider_id to build the storage path)
     const { data: submission, error: fetchError } = await supabase
       .from("consent_submissions")
-      .select(`
+      .select(
+        `
         id,
         patient_first_name,
         patient_last_name,
@@ -43,7 +45,8 @@ serve(async (req) => {
         provider_id,
         invite_id,
         module_id
-      `)
+      `
+      )
       .eq("id", submissionId)
       .single();
 
@@ -52,14 +55,31 @@ serve(async (req) => {
       throw new Error("Submission not found");
     }
 
-    // Fetch module details
+    const fileName = `${submission.provider_id}/${submission.id}.pdf`;
+
+    // If caller only wants a URL and the PDF already exists, return a fresh signed URL.
+    if (!regenerate) {
+      const { data: signedUrlData, error: signedUrlError } = await supabase.storage
+        .from("consent-pdfs")
+        .createSignedUrl(fileName, 60 * 60); // 1 hour
+
+      if (!signedUrlError && signedUrlData?.signedUrl) {
+        return new Response(
+          JSON.stringify({ success: true, pdfUrl: signedUrlData.signedUrl }),
+          { headers: { ...corsHeaders, "Content-Type": "application/json" } }
+        );
+      }
+
+      console.warn("Could not create signed URL; will regenerate PDF", signedUrlError);
+    }
+
+    // Fetch module + provider details (used for PDF contents)
     const { data: module } = await supabase
       .from("consent_modules")
       .select("name, description")
       .eq("id", submission.module_id)
       .single();
 
-    // Fetch provider details
     const { data: provider } = await supabase
       .from("provider_profiles")
       .select("full_name, practice_name")
@@ -264,11 +284,15 @@ serve(async (req) => {
     const pdfBytes = await pdfDoc.save();
     console.log("PDF generated, size:", pdfBytes.length, "bytes");
 
-    // Upload to storage (convert to ArrayBuffer for compatibility)
-    const fileName = `${submission.provider_id}/${submission.id}.pdf`;
+    // Upload to storage
+    const uploadBody = pdfBytes.buffer.slice(
+      pdfBytes.byteOffset,
+      pdfBytes.byteOffset + pdfBytes.byteLength,
+    );
+
     const { error: uploadError } = await supabase.storage
       .from("consent-pdfs")
-      .upload(fileName, pdfBytes.buffer, {
+      .upload(fileName, uploadBody, {
         contentType: "application/pdf",
         upsert: true,
       });
