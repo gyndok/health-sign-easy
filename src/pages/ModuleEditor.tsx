@@ -1,5 +1,5 @@
-import { useState } from "react";
-import { Link, useNavigate } from "react-router-dom";
+import { useState, useEffect } from "react";
+import { Link, useNavigate, useParams } from "react-router-dom";
 import { ProviderLayout } from "@/components/layout/ProviderLayout";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -13,18 +13,66 @@ import {
   Video, 
   FileText,
   X,
-  Plus
+  Plus,
+  Loader2
 } from "lucide-react";
 import { toast } from "sonner";
+import { useAuth } from "@/hooks/useAuth";
+import { supabase } from "@/integrations/supabase/client";
 
 export default function ModuleEditor() {
+  const { id } = useParams();
   const navigate = useNavigate();
+  const { user, profile, isLoading: authLoading } = useAuth();
+  
   const [name, setName] = useState("");
   const [description, setDescription] = useState("");
   const [videoUrl, setVideoUrl] = useState("");
   const [tags, setTags] = useState<string[]>([]);
   const [tagInput, setTagInput] = useState("");
   const [showPreview, setShowPreview] = useState(false);
+  const [isLoading, setIsLoading] = useState(false);
+  const [isSaving, setIsSaving] = useState(false);
+
+  const isEditing = !!id;
+
+  useEffect(() => {
+    if (!authLoading && !user) {
+      navigate("/auth");
+    }
+  }, [user, authLoading, navigate]);
+
+  useEffect(() => {
+    if (isEditing && user) {
+      fetchModule();
+    }
+  }, [id, user]);
+
+  const fetchModule = async () => {
+    if (!id) return;
+
+    setIsLoading(true);
+    const { data, error } = await supabase
+      .from("consent_modules")
+      .select("*")
+      .eq("id", id)
+      .maybeSingle();
+
+    if (error) {
+      console.error("Error fetching module:", error);
+      toast.error("Failed to load module");
+      navigate("/modules");
+    } else if (data) {
+      setName(data.name);
+      setDescription(data.description || "");
+      setVideoUrl(data.video_url || "");
+      setTags(data.tags || []);
+    } else {
+      toast.error("Module not found");
+      navigate("/modules");
+    }
+    setIsLoading(false);
+  };
 
   const addTag = () => {
     if (tagInput.trim() && !tags.includes(tagInput.trim())) {
@@ -37,7 +85,7 @@ export default function ModuleEditor() {
     setTags(tags.filter((tag) => tag !== tagToRemove));
   };
 
-  const handleSave = () => {
+  const handleSave = async () => {
     if (!name.trim()) {
       toast.error("Please enter a module name");
       return;
@@ -46,8 +94,44 @@ export default function ModuleEditor() {
       toast.error("Please enter consent text");
       return;
     }
-    toast.success("Module saved successfully!");
-    navigate("/modules");
+    if (!user) {
+      toast.error("You must be logged in");
+      return;
+    }
+
+    setIsSaving(true);
+
+    const moduleData = {
+      name: name.trim(),
+      description: description.trim(),
+      video_url: videoUrl.trim() || null,
+      tags: tags.length > 0 ? tags : null,
+      created_by: user.id,
+    };
+
+    let error;
+
+    if (isEditing) {
+      const { error: updateError } = await supabase
+        .from("consent_modules")
+        .update(moduleData)
+        .eq("id", id);
+      error = updateError;
+    } else {
+      const { error: insertError } = await supabase
+        .from("consent_modules")
+        .insert(moduleData);
+      error = insertError;
+    }
+
+    if (error) {
+      console.error("Error saving module:", error);
+      toast.error("Failed to save module");
+    } else {
+      toast.success(isEditing ? "Module updated successfully!" : "Module created successfully!");
+      navigate("/modules");
+    }
+    setIsSaving(false);
   };
 
   const getVideoEmbedUrl = (url: string) => {
@@ -75,6 +159,19 @@ export default function ModuleEditor() {
 
   const embedUrl = getVideoEmbedUrl(videoUrl);
 
+  if (authLoading || isLoading) {
+    return (
+      <ProviderLayout>
+        <div className="flex items-center justify-center min-h-[400px]">
+          <Loader2 className="h-8 w-8 animate-spin text-muted-foreground" />
+        </div>
+      </ProviderLayout>
+    );
+  }
+
+  const providerName = profile?.full_name || user?.email?.split("@")[0] || "Provider";
+  const practiceName = profile?.practice_name || "Medical Practice";
+
   return (
     <ProviderLayout>
       <div className="max-w-5xl mx-auto">
@@ -88,10 +185,10 @@ export default function ModuleEditor() {
             </Button>
             <div>
               <h1 className="text-2xl font-bold font-display">
-                {name || "New Consent Module"}
+                {isEditing ? "Edit Module" : "New Consent Module"}
               </h1>
               <p className="text-muted-foreground text-sm mt-0.5">
-                Create educational consent content for your patients
+                {isEditing ? "Update your consent module" : "Create educational consent content for your patients"}
               </p>
             </div>
           </div>
@@ -103,9 +200,13 @@ export default function ModuleEditor() {
               <Eye className="h-4 w-4 mr-2" />
               {showPreview ? "Edit" : "Preview"}
             </Button>
-            <Button onClick={handleSave}>
-              <Save className="h-4 w-4 mr-2" />
-              Save Module
+            <Button onClick={handleSave} disabled={isSaving}>
+              {isSaving ? (
+                <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+              ) : (
+                <Save className="h-4 w-4 mr-2" />
+              )}
+              {isEditing ? "Update Module" : "Save Module"}
             </Button>
           </div>
         </div>
@@ -223,7 +324,7 @@ export default function ModuleEditor() {
                 {/* Mock Patient Header */}
                 <div className="text-center mb-6 pb-6 border-b border-border">
                   <p className="text-sm text-muted-foreground">Consent Form from</p>
-                  <p className="font-semibold">Dr. Roberts - City Medical Center</p>
+                  <p className="font-semibold">{providerName} - {practiceName}</p>
                 </div>
 
                 <h2 className="text-xl font-bold mb-4">
