@@ -107,8 +107,11 @@ export default function NewInvitation() {
       return;
     }
 
-    // Get the consent link
-    const consentLink = `${window.location.origin}/consent/${data.token}`;
+    // Get the consent link - use the preview URL for the app, not the editor URL
+    const appUrl = import.meta.env.VITE_SUPABASE_PROJECT_ID 
+      ? `https://id-preview--${import.meta.env.VITE_SUPABASE_PROJECT_ID}.lovable.app`
+      : window.location.origin;
+    const consentLink = `${appUrl}/consent/${data.token}`;
 
     // Get selected module name
     const selectedModuleData = modules.find((m) => m.id === selectedModule);
