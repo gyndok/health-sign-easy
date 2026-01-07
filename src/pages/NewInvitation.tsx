@@ -1,5 +1,5 @@
 import { useState, useEffect } from "react";
-import { Link, useNavigate, useSearchParams } from "react-router-dom";
+import { Link, useNavigate } from "react-router-dom";
 import { ProviderLayout } from "@/components/layout/ProviderLayout";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -11,28 +11,22 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { ArrowLeft, Send, Mail, User, FileText, MessageSquare, Phone, Loader2 } from "lucide-react";
+import { ArrowLeft, Send, Mail, FileText, MessageSquare, Loader2 } from "lucide-react";
 import { toast } from "sonner";
 import { Textarea } from "@/components/ui/textarea";
-import { Switch } from "@/components/ui/switch";
 import { useAuth } from "@/hooks/useAuth";
 import { supabase } from "@/integrations/supabase/client";
 import { Tables } from "@/integrations/supabase/types";
 
 export default function NewInvitation() {
   const navigate = useNavigate();
-  const [searchParams] = useSearchParams();
   const { user, profile, isLoading: authLoading } = useAuth();
-  
+
   const [modules, setModules] = useState<Tables<"consent_modules">[]>([]);
   const [isLoadingModules, setIsLoadingModules] = useState(true);
-  const [firstName, setFirstName] = useState(searchParams.get("firstName") || "");
-  const [lastName, setLastName] = useState(searchParams.get("lastName") || "");
-  const [email, setEmail] = useState(searchParams.get("email") || "");
-  const [phone, setPhone] = useState("");
-  const [selectedModule, setSelectedModule] = useState(searchParams.get("module") || "");
+  const [email, setEmail] = useState("");
+  const [selectedModule, setSelectedModule] = useState("");
   const [customMessage, setCustomMessage] = useState("");
-  const [sendSms, setSendSms] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
 
   useEffect(() => {
@@ -73,18 +67,13 @@ export default function NewInvitation() {
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
 
-    if (!firstName.trim() || !lastName.trim() || !email.trim() || !selectedModule) {
+    if (!email.trim() || !selectedModule) {
       toast.error("Please fill in all required fields");
       return;
     }
 
     if (!validateEmail(email)) {
       toast.error("Please enter a valid email address");
-      return;
-    }
-
-    if (sendSms && !phone.trim()) {
-      toast.error("Please enter a phone number for SMS");
       return;
     }
 
@@ -104,10 +93,7 @@ export default function NewInvitation() {
       .insert({
         created_by: user.id,
         module_id: selectedModule,
-        patient_first_name: firstName.trim(),
-        patient_last_name: lastName.trim(),
         patient_email: email.trim().toLowerCase(),
-        patient_phone: phone.trim() || null,
         custom_message: customMessage.trim() || null,
         expires_at: expiresAt.toISOString(),
       })
@@ -129,13 +115,11 @@ export default function NewInvitation() {
 
     // Send email via edge function
     try {
-      const { data: emailResponse, error: emailError } = await supabase.functions.invoke(
+      const { error: emailError } = await supabase.functions.invoke(
         "send-invite-email",
         {
           body: {
             inviteId: data.id,
-            patientFirstName: firstName.trim(),
-            patientLastName: lastName.trim(),
             patientEmail: email.trim().toLowerCase(),
             moduleName: selectedModuleData?.name || "Consent Form",
             providerName: profile?.full_name || user.email?.split("@")[0] || "Your Provider",
@@ -148,14 +132,13 @@ export default function NewInvitation() {
 
       if (emailError) {
         console.error("Error sending email:", emailError);
-        // Still copy link to clipboard as fallback
         await navigator.clipboard.writeText(consentLink);
         toast.success("Invitation created!", {
           description: `Email failed to send, but the link has been copied to your clipboard.`,
         });
       } else {
         toast.success("Invitation sent!", {
-          description: `${firstName} ${lastName} will receive an email with the consent link.`,
+          description: `The patient will receive an email with the consent link.`,
         });
       }
     } catch (emailErr) {
@@ -192,7 +175,7 @@ export default function NewInvitation() {
           <div>
             <h1 className="text-2xl font-bold font-display">Send Consent Invitation</h1>
             <p className="text-muted-foreground text-sm mt-0.5">
-              Invite a patient to review and sign a consent form
+              The patient will provide their details when they open the link
             </p>
           </div>
         </div>
@@ -210,79 +193,27 @@ export default function NewInvitation() {
           </div>
         ) : (
           <form onSubmit={handleSubmit} className="space-y-6">
-            {/* Patient Information */}
+            {/* Patient Email */}
             <div className="card-elevated p-6 space-y-5">
               <h2 className="font-semibold font-display flex items-center gap-2">
-                <User className="h-5 w-5 text-primary" />
-                Patient Information
+                <Mail className="h-5 w-5 text-primary" />
+                Patient Email
               </h2>
-
-              <div className="grid grid-cols-2 gap-4">
-                <div className="space-y-2">
-                  <Label htmlFor="firstName">First Name *</Label>
-                  <Input
-                    id="firstName"
-                    placeholder="Sarah"
-                    value={firstName}
-                    onChange={(e) => setFirstName(e.target.value)}
-                    className="input-focus-ring"
-                    required
-                  />
-                </div>
-                <div className="space-y-2">
-                  <Label htmlFor="lastName">Last Name *</Label>
-                  <Input
-                    id="lastName"
-                    placeholder="Johnson"
-                    value={lastName}
-                    onChange={(e) => setLastName(e.target.value)}
-                    className="input-focus-ring"
-                    required
-                  />
-                </div>
-              </div>
 
               <div className="space-y-2">
                 <Label htmlFor="email">Email Address *</Label>
-                <div className="relative">
-                  <Mail className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-                  <Input
-                    id="email"
-                    type="email"
-                    placeholder="patient@email.com"
-                    value={email}
-                    onChange={(e) => setEmail(e.target.value)}
-                    className="pl-10 input-focus-ring"
-                    required
-                  />
-                </div>
-              </div>
-
-              <div className="space-y-2">
-                <div className="flex items-center justify-between">
-                  <Label htmlFor="phone">Phone Number</Label>
-                  <div className="flex items-center gap-2">
-                    <Switch
-                      id="sendSms"
-                      checked={sendSms}
-                      onCheckedChange={setSendSms}
-                    />
-                    <Label htmlFor="sendSms" className="text-sm font-normal">
-                      Also send SMS
-                    </Label>
-                  </div>
-                </div>
-                <div className="relative">
-                  <Phone className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-                  <Input
-                    id="phone"
-                    type="tel"
-                    placeholder="+1 (555) 123-4567"
-                    value={phone}
-                    onChange={(e) => setPhone(e.target.value)}
-                    className="pl-10 input-focus-ring"
-                  />
-                </div>
+                <Input
+                  id="email"
+                  type="email"
+                  placeholder="patient@email.com"
+                  value={email}
+                  onChange={(e) => setEmail(e.target.value)}
+                  className="input-focus-ring"
+                  required
+                />
+                <p className="text-xs text-muted-foreground">
+                  The patient will enter their name and other details when they open the consent link
+                </p>
               </div>
             </div>
 
@@ -328,7 +259,7 @@ export default function NewInvitation() {
                 <Label htmlFor="message">Personal Note</Label>
                 <Textarea
                   id="message"
-                  placeholder="Add a personal message to include in the invitation..."
+                  placeholder="Add a personal message to include in the invitation email..."
                   value={customMessage}
                   onChange={(e) => setCustomMessage(e.target.value)}
                   className="min-h-[100px] input-focus-ring resize-y"
@@ -345,12 +276,12 @@ export default function NewInvitation() {
                 {isSubmitting ? (
                   <>
                     <Loader2 className="h-4 w-4 mr-2 animate-spin" />
-                    Creating...
+                    Sending...
                   </>
                 ) : (
                   <>
                     <Send className="h-4 w-4 mr-2" />
-                    Create & Copy Link
+                    Send Invitation
                   </>
                 )}
               </Button>

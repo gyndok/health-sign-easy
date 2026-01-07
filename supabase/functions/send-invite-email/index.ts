@@ -11,8 +11,6 @@ const corsHeaders = {
 
 interface SendInviteEmailRequest {
   inviteId: string;
-  patientFirstName: string;
-  patientLastName: string;
   patientEmail: string;
   moduleName: string;
   providerName: string;
@@ -29,8 +27,6 @@ const handler = async (req: Request): Promise<Response> => {
 
   try {
     const {
-      patientFirstName,
-      patientLastName,
       patientEmail,
       moduleName,
       providerName,
@@ -38,6 +34,8 @@ const handler = async (req: Request): Promise<Response> => {
       customMessage,
       consentLink,
     }: SendInviteEmailRequest = await req.json();
+
+    console.log("Sending invitation email to:", patientEmail);
 
     console.log("Sending invitation email to:", patientEmail);
 
@@ -56,10 +54,10 @@ const handler = async (req: Request): Promise<Response> => {
           </div>
           
           <div style="background: #ffffff; padding: 30px; border: 1px solid #e5e7eb; border-top: none;">
-            <h2 style="color: #111827; margin: 0 0 20px 0;">Hello ${patientFirstName},</h2>
+            <h2 style="color: #111827; margin: 0 0 20px 0;">Hello,</h2>
             
             <p style="margin: 0 0 15px 0;">
-              <strong>${providerName}</strong> from <strong>${practiceName || "their practice"}</strong> has requested your consent for:
+              <strong>${providerName}</strong> from <strong>${practiceName || "their practice"}</strong> has invited you to review and sign a consent form:
             </p>
             
             <div style="background: #f8fafc; border-left: 4px solid #0ea5e9; padding: 15px 20px; margin: 20px 0; border-radius: 0 8px 8px 0;">
