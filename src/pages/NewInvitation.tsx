@@ -107,9 +107,8 @@ export default function NewInvitation() {
       return;
     }
 
-    // Get the consent link - use the public app URL
-    const appUrl = import.meta.env.VITE_PUBLIC_APP_URL || window.location.origin;
-    const consentLink = `${appUrl}/consent/${data.token}`;
+    // Build a link for clipboard fallback; email uses the backend's PUBLIC_APP_URL
+    const consentLink = `${window.location.origin}/consent/${data.token}`;
 
     // Get selected module name
     const selectedModuleData = modules.find((m) => m.id === selectedModule);
@@ -121,6 +120,7 @@ export default function NewInvitation() {
         {
           body: {
             inviteId: data.id,
+            inviteToken: data.token,
             patientEmail: email.trim().toLowerCase(),
             moduleName: selectedModuleData?.name || "Consent Form",
             providerName: profile?.full_name || user.email?.split("@")[0] || "Your Provider",
