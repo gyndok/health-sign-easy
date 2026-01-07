@@ -98,7 +98,7 @@ const handler = async (req: Request): Promise<Response> => {
     `;
 
     const emailResponse = await resend.emails.send({
-      from: "ClearConsent <onboarding@resend.dev>",
+      from: "ClearConsent <noreply@santellishealth.com>",
       to: [patientEmail],
       subject: `Consent Request from ${providerName} - ${moduleName}`,
       html: emailHtml,
