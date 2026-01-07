@@ -51,7 +51,7 @@ export default function Index() {
             <div className="flex h-9 w-9 items-center justify-center rounded-lg bg-primary text-primary-foreground">
               <Shield className="h-5 w-5" />
             </div>
-            <span className="font-display text-xl font-bold">ConsentFlow</span>
+            <span className="font-display text-xl font-bold">ClearConsent</span>
           </Link>
           <div className="flex items-center gap-3">
             <Button variant="ghost" asChild>
@@ -156,7 +156,7 @@ export default function Index() {
               Ready to Modernize Your Consent Workflow?
             </h2>
             <p className="text-lg opacity-90 mb-8">
-              Join hundreds of healthcare providers who trust ConsentFlow for secure, 
+              Join hundreds of healthcare providers who trust ClearConsent for secure, 
               efficient patient consent management.
             </p>
             <Button size="xl" variant="secondary" asChild>
@@ -177,10 +177,10 @@ export default function Index() {
               <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-primary text-primary-foreground">
                 <Shield className="h-4 w-4" />
               </div>
-              <span className="font-display text-lg font-bold">ConsentFlow</span>
+              <span className="font-display text-lg font-bold">ClearConsent</span>
             </div>
             <p className="text-sm text-muted-foreground">
-              © 2024 ConsentFlow. All rights reserved. HIPAA Compliant.
+              © 2025 ClearConsent. All rights reserved. HIPAA Compliant.
             </p>
           </div>
         </div>
