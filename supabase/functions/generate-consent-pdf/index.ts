@@ -264,26 +264,33 @@ serve(async (req) => {
     const pdfBytes = await pdfDoc.save();
     console.log("PDF generated, size:", pdfBytes.length, "bytes");
 
-    // Upload to storage
+    // Upload to storage (convert to ArrayBuffer for compatibility)
     const fileName = `${submission.provider_id}/${submission.id}.pdf`;
     const { error: uploadError } = await supabase.storage
       .from("consent-pdfs")
-      .upload(fileName, pdfBytes, {
+      .upload(fileName, pdfBytes.buffer, {
         contentType: "application/pdf",
         upsert: true,
       });
 
     if (uploadError) {
       console.error("Error uploading PDF:", uploadError);
-      throw new Error("Failed to upload PDF");
+      throw new Error("Failed to upload PDF: " + uploadError.message);
     }
 
-    // Get signed URL for the PDF
-    const { data: signedUrlData } = await supabase.storage
+    console.log("PDF uploaded successfully to:", fileName);
+
+    // Get signed URL for the PDF (valid for 1 year)
+    const { data: signedUrlData, error: signedUrlError } = await supabase.storage
       .from("consent-pdfs")
-      .createSignedUrl(fileName, 60 * 60 * 24 * 365); // 1 year expiry
+      .createSignedUrl(fileName, 60 * 60 * 24 * 365);
+
+    if (signedUrlError) {
+      console.error("Error creating signed URL:", signedUrlError);
+    }
 
     const pdfUrl = signedUrlData?.signedUrl || null;
+    console.log("Signed URL created:", pdfUrl ? "success" : "failed");
 
     // Update submission with PDF URL
     const { error: updateError } = await supabase
