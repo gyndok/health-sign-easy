@@ -14,7 +14,215 @@ export type Database = {
   }
   public: {
     Tables: {
-      [_ in never]: never
+      consent_modules: {
+        Row: {
+          created_at: string
+          created_by: string
+          description: string | null
+          id: string
+          name: string
+          tags: string[] | null
+          updated_at: string
+          video_url: string | null
+        }
+        Insert: {
+          created_at?: string
+          created_by: string
+          description?: string | null
+          id?: string
+          name: string
+          tags?: string[] | null
+          updated_at?: string
+          video_url?: string | null
+        }
+        Update: {
+          created_at?: string
+          created_by?: string
+          description?: string | null
+          id?: string
+          name?: string
+          tags?: string[] | null
+          updated_at?: string
+          video_url?: string | null
+        }
+        Relationships: []
+      }
+      consent_submissions: {
+        Row: {
+          created_at: string
+          id: string
+          invite_id: string
+          module_id: string | null
+          patient_email: string
+          patient_first_name: string
+          patient_last_name: string
+          pdf_url: string | null
+          provider_id: string | null
+          signature: string
+          signed_at: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          invite_id: string
+          module_id?: string | null
+          patient_email: string
+          patient_first_name: string
+          patient_last_name: string
+          pdf_url?: string | null
+          provider_id?: string | null
+          signature: string
+          signed_at?: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          invite_id?: string
+          module_id?: string | null
+          patient_email?: string
+          patient_first_name?: string
+          patient_last_name?: string
+          pdf_url?: string | null
+          provider_id?: string | null
+          signature?: string
+          signed_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "consent_submissions_invite_id_fkey"
+            columns: ["invite_id"]
+            isOneToOne: false
+            referencedRelation: "invites"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "consent_submissions_module_id_fkey"
+            columns: ["module_id"]
+            isOneToOne: false
+            referencedRelation: "consent_modules"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      invites: {
+        Row: {
+          completed_at: string | null
+          created_at: string
+          created_by: string
+          custom_message: string | null
+          expires_at: string
+          id: string
+          module_id: string
+          patient_email: string
+          patient_first_name: string
+          patient_last_name: string
+          patient_phone: string | null
+          status: Database["public"]["Enums"]["invite_status"]
+          token: string
+          viewed_at: string | null
+        }
+        Insert: {
+          completed_at?: string | null
+          created_at?: string
+          created_by: string
+          custom_message?: string | null
+          expires_at?: string
+          id?: string
+          module_id: string
+          patient_email: string
+          patient_first_name: string
+          patient_last_name: string
+          patient_phone?: string | null
+          status?: Database["public"]["Enums"]["invite_status"]
+          token?: string
+          viewed_at?: string | null
+        }
+        Update: {
+          completed_at?: string | null
+          created_at?: string
+          created_by?: string
+          custom_message?: string | null
+          expires_at?: string
+          id?: string
+          module_id?: string
+          patient_email?: string
+          patient_first_name?: string
+          patient_last_name?: string
+          patient_phone?: string | null
+          status?: Database["public"]["Enums"]["invite_status"]
+          token?: string
+          viewed_at?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "invites_module_id_fkey"
+            columns: ["module_id"]
+            isOneToOne: false
+            referencedRelation: "consent_modules"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      provider_profiles: {
+        Row: {
+          created_at: string
+          email: string
+          full_name: string
+          id: string
+          phone: string | null
+          practice_name: string | null
+          primary_specialty: string | null
+          timezone: string | null
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          email: string
+          full_name: string
+          id?: string
+          phone?: string | null
+          practice_name?: string | null
+          primary_specialty?: string | null
+          timezone?: string | null
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          email?: string
+          full_name?: string
+          id?: string
+          phone?: string | null
+          practice_name?: string | null
+          primary_specialty?: string | null
+          timezone?: string | null
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
+      user_roles: {
+        Row: {
+          created_at: string
+          id: string
+          role: Database["public"]["Enums"]["app_role"]
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          role: Database["public"]["Enums"]["app_role"]
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          role?: Database["public"]["Enums"]["app_role"]
+          user_id?: string
+        }
+        Relationships: []
+      }
     }
     Views: {
       [_ in never]: never
@@ -23,7 +231,8 @@ export type Database = {
       [_ in never]: never
     }
     Enums: {
-      [_ in never]: never
+      app_role: "provider" | "patient"
+      invite_status: "pending" | "viewed" | "completed" | "expired"
     }
     CompositeTypes: {
       [_ in never]: never
@@ -150,6 +359,9 @@ export type CompositeTypes<
 
 export const Constants = {
   public: {
-    Enums: {},
+    Enums: {
+      app_role: ["provider", "patient"],
+      invite_status: ["pending", "viewed", "completed", "expired"],
+    },
   },
 } as const
