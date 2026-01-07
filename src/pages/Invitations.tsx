@@ -18,6 +18,7 @@ import {
   Loader2,
   Copy,
   ExternalLink,
+  FileDown,
 } from "lucide-react";
 import {
   DropdownMenu,
@@ -47,6 +48,10 @@ interface InviteWithModule extends Tables<"invites"> {
   consent_modules: {
     name: string;
   } | null;
+  consent_submissions: {
+    id: string;
+    pdf_url: string | null;
+  }[] | null;
 }
 
 const statusConfig: Record<InviteStatus, { variant: "default" | "secondary" | "destructive" | "outline"; label: string; icon: typeof Clock }> = {
@@ -104,6 +109,10 @@ export default function Invitations() {
         *,
         consent_modules (
           name
+        ),
+        consent_submissions (
+          id,
+          pdf_url
         )
       `)
       .eq("created_by", user.id)
@@ -394,6 +403,18 @@ export default function Invitations() {
                                 <DropdownMenuItem onClick={() => handleSendNew(invitation)}>
                                   <Send className="h-4 w-4 mr-2" />
                                   Send New Invite
+                                </DropdownMenuItem>
+                              )}
+                              {effectiveStatus === "completed" && invitation.consent_submissions?.[0]?.pdf_url && (
+                                <DropdownMenuItem asChild>
+                                  <a
+                                    href={invitation.consent_submissions[0].pdf_url}
+                                    target="_blank"
+                                    rel="noopener noreferrer"
+                                  >
+                                    <FileDown className="h-4 w-4 mr-2" />
+                                    Download PDF
+                                  </a>
                                 </DropdownMenuItem>
                               )}
                               <DropdownMenuSeparator />
