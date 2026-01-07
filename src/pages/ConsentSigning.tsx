@@ -538,7 +538,7 @@ export default function ConsentSigning() {
         </div>
 
         <div className="space-y-6">
-          {/* Video Section */}
+        {/* Video Section */}
           {invite?.module_video_url && (
             <div className="card-elevated p-6">
               <div className="flex items-center gap-3 mb-4">
@@ -546,12 +546,48 @@ export default function ConsentSigning() {
                 <h2 className="font-semibold">Educational Video</h2>
               </div>
               <div className="aspect-video bg-muted rounded-lg overflow-hidden mb-4">
-                <video
-                  src={invite.module_video_url}
-                  controls
-                  className="w-full h-full"
-                  onEnded={() => setVideoWatched(true)}
-                />
+                {(() => {
+                  const url = invite.module_video_url;
+                  // Check if it's a YouTube URL
+                  const youtubeMatch = url.match(
+                    /(?:youtube\.com\/(?:watch\?v=|embed\/)|youtu\.be\/)([a-zA-Z0-9_-]{11})/
+                  );
+                  if (youtubeMatch) {
+                    const videoId = youtubeMatch[1];
+                    return (
+                      <iframe
+                        src={`https://www.youtube.com/embed/${videoId}`}
+                        title="Educational Video"
+                        allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
+                        allowFullScreen
+                        className="w-full h-full"
+                      />
+                    );
+                  }
+                  // Check if it's a Vimeo URL
+                  const vimeoMatch = url.match(/vimeo\.com\/(\d+)/);
+                  if (vimeoMatch) {
+                    const videoId = vimeoMatch[1];
+                    return (
+                      <iframe
+                        src={`https://player.vimeo.com/video/${videoId}`}
+                        title="Educational Video"
+                        allow="autoplay; fullscreen; picture-in-picture"
+                        allowFullScreen
+                        className="w-full h-full"
+                      />
+                    );
+                  }
+                  // Default to native video player for direct video URLs
+                  return (
+                    <video
+                      src={url}
+                      controls
+                      className="w-full h-full"
+                      onEnded={() => setVideoWatched(true)}
+                    />
+                  );
+                })()}
               </div>
               <div className="flex items-center gap-2">
                 <Checkbox
