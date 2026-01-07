@@ -1,10 +1,11 @@
-import { useState } from "react";
-import { Link, useNavigate } from "react-router-dom";
+import { useState, useEffect } from "react";
+import { useNavigate } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Shield, ArrowRight, Mail, Lock, User } from "lucide-react";
 import { toast } from "sonner";
+import { useAuth } from "@/hooks/useAuth";
 
 type AuthMode = "login" | "signup";
 type UserRole = "provider" | "patient";
@@ -17,17 +18,57 @@ export default function Auth() {
   const [fullName, setFullName] = useState("");
   const [isLoading, setIsLoading] = useState(false);
   const navigate = useNavigate();
+  const { user, signIn, signUp } = useAuth();
+
+  // Redirect if already logged in
+  useEffect(() => {
+    if (user) {
+      navigate("/dashboard");
+    }
+  }, [user, navigate]);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setIsLoading(true);
 
-    // Simulate auth - will be replaced with Supabase
-    await new Promise((resolve) => setTimeout(resolve, 1000));
-    
-    toast.success(mode === "login" ? "Welcome back!" : "Account created successfully!");
-    navigate("/dashboard");
-    setIsLoading(false);
+    try {
+      if (mode === "login") {
+        const { error } = await signIn(email, password);
+        if (error) {
+          if (error.message.includes("Invalid login credentials")) {
+            toast.error("Invalid email or password");
+          } else {
+            toast.error(error.message);
+          }
+          setIsLoading(false);
+          return;
+        }
+        toast.success("Welcome back!");
+      } else {
+        if (password.length < 6) {
+          toast.error("Password must be at least 6 characters");
+          setIsLoading(false);
+          return;
+        }
+        
+        const { error } = await signUp(email, password, fullName, role);
+        if (error) {
+          if (error.message.includes("already registered")) {
+            toast.error("This email is already registered. Please sign in instead.");
+          } else {
+            toast.error(error.message);
+          }
+          setIsLoading(false);
+          return;
+        }
+        toast.success("Account created successfully!");
+      }
+      navigate("/dashboard");
+    } catch (err) {
+      toast.error("An unexpected error occurred");
+    } finally {
+      setIsLoading(false);
+    }
   };
 
   return (
@@ -49,7 +90,7 @@ export default function Auth() {
             <div className="flex h-12 w-12 items-center justify-center rounded-xl bg-white/20 backdrop-blur">
               <Shield className="h-7 w-7 text-white" />
             </div>
-            <span className="font-display text-3xl font-bold text-white">ConsentFlow</span>
+            <span className="font-display text-3xl font-bold text-white">ClearConsent</span>
           </div>
           <h1 className="text-4xl lg:text-5xl font-bold text-white leading-tight mb-6">
             HIPAA-Compliant<br />
@@ -85,7 +126,7 @@ export default function Auth() {
             <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-primary text-primary-foreground">
               <Shield className="h-6 w-6" />
             </div>
-            <span className="font-display text-2xl font-bold">ConsentFlow</span>
+            <span className="font-display text-2xl font-bold">ClearConsent</span>
           </div>
 
           <div className="mb-8">
@@ -95,7 +136,7 @@ export default function Auth() {
             <p className="text-muted-foreground mt-2">
               {mode === "login" 
                 ? "Sign in to access your dashboard" 
-                : "Get started with ConsentFlow"}
+                : "Get started with ClearConsent"}
             </p>
           </div>
 
@@ -179,6 +220,7 @@ export default function Auth() {
                   onChange={(e) => setPassword(e.target.value)}
                   className="pl-10 input-focus-ring"
                   required
+                  minLength={6}
                 />
               </div>
             </div>
@@ -221,7 +263,7 @@ export default function Auth() {
 
           <div className="mt-8 pt-6 border-t border-border">
             <p className="text-xs text-center text-muted-foreground">
-              By continuing, you agree to ConsentFlow's{" "}
+              By continuing, you agree to ClearConsent's{" "}
               <a href="#" className="underline hover:text-foreground">Terms of Service</a>
               {" "}and{" "}
               <a href="#" className="underline hover:text-foreground">Privacy Policy</a>

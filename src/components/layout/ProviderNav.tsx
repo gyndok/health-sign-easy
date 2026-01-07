@@ -1,4 +1,4 @@
-import { Link, useLocation } from "react-router-dom";
+import { Link, useLocation, useNavigate } from "react-router-dom";
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
 import {
@@ -12,6 +12,8 @@ import {
   Shield,
 } from "lucide-react";
 import { useState } from "react";
+import { useAuth } from "@/hooks/useAuth";
+import { toast } from "sonner";
 
 interface NavItem {
   label: string;
@@ -28,7 +30,33 @@ const navItems: NavItem[] = [
 
 export function ProviderNav() {
   const location = useLocation();
+  const navigate = useNavigate();
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
+  const { profile, signOut, user } = useAuth();
+
+  const handleSignOut = async () => {
+    await signOut();
+    toast.success("Signed out successfully");
+    navigate("/");
+  };
+
+  // Get initials from profile name or email
+  const getInitials = () => {
+    if (profile?.full_name) {
+      return profile.full_name
+        .split(" ")
+        .map((n) => n[0])
+        .join("")
+        .toUpperCase()
+        .slice(0, 2);
+    }
+    if (user?.email) {
+      return user.email.slice(0, 2).toUpperCase();
+    }
+    return "U";
+  };
+
+  const displayName = profile?.full_name || user?.email?.split("@")[0] || "User";
 
   return (
     <header className="sticky top-0 z-50 w-full border-b border-border bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60">
@@ -67,14 +95,12 @@ export function ProviderNav() {
         <div className="hidden md:flex items-center gap-3">
           <div className="flex items-center gap-2 px-3 py-1.5 rounded-full bg-secondary">
             <div className="h-7 w-7 rounded-full bg-primary/10 flex items-center justify-center">
-              <span className="text-xs font-medium text-primary">DR</span>
+              <span className="text-xs font-medium text-primary">{getInitials()}</span>
             </div>
-            <span className="text-sm font-medium">Dr. Roberts</span>
+            <span className="text-sm font-medium">{displayName}</span>
           </div>
-          <Button variant="ghost" size="icon" asChild>
-            <Link to="/">
-              <LogOut className="h-4 w-4" />
-            </Link>
+          <Button variant="ghost" size="icon" onClick={handleSignOut}>
+            <LogOut className="h-4 w-4" />
           </Button>
         </div>
 
@@ -113,14 +139,16 @@ export function ProviderNav() {
               );
             })}
             <div className="pt-4 border-t border-border mt-4">
-              <Link
-                to="/"
-                className="flex items-center gap-3 px-4 py-3 rounded-lg text-destructive hover:bg-destructive/10"
-                onClick={() => setMobileMenuOpen(false)}
+              <button
+                onClick={() => {
+                  setMobileMenuOpen(false);
+                  handleSignOut();
+                }}
+                className="flex items-center gap-3 px-4 py-3 rounded-lg text-destructive hover:bg-destructive/10 w-full"
               >
                 <LogOut className="h-5 w-5" />
                 Sign Out
-              </Link>
+              </button>
             </div>
           </nav>
         </div>
