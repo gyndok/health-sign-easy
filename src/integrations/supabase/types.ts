@@ -270,7 +270,43 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
-      [_ in never]: never
+      get_invite_by_token: {
+        Args: { p_token: string }
+        Returns: {
+          custom_message: string
+          expires_at: string
+          id: string
+          module_description: string
+          module_id: string
+          module_name: string
+          module_video_url: string
+          patient_email: string
+          patient_first_name: string
+          patient_last_name: string
+          provider_full_name: string
+          provider_practice_name: string
+          status: Database["public"]["Enums"]["invite_status"]
+          token: string
+        }[]
+      }
+      link_invite_patient_user_by_token: {
+        Args: { p_first_name: string; p_last_name: string; p_token: string }
+        Returns: boolean
+      }
+      mark_invite_viewed: { Args: { p_token: string }; Returns: boolean }
+      submit_consent_by_token: {
+        Args: {
+          p_patient_first_name: string
+          p_patient_last_name: string
+          p_signature: string
+          p_token: string
+        }
+        Returns: string
+      }
+      update_invite_patient_info_by_token: {
+        Args: { p_first_name: string; p_last_name: string; p_token: string }
+        Returns: boolean
+      }
     }
     Enums: {
       app_role: "provider" | "patient"
