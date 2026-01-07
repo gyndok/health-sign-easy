@@ -1,4 +1,5 @@
-import { Link } from "react-router-dom";
+import { useState, useEffect } from "react";
+import { Link, useNavigate } from "react-router-dom";
 import { ProviderLayout } from "@/components/layout/ProviderLayout";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -12,6 +13,7 @@ import {
   Copy,
   Trash2,
   Video,
+  Loader2,
 } from "lucide-react";
 import {
   DropdownMenu,
@@ -20,66 +22,141 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
+import { useAuth } from "@/hooks/useAuth";
+import { supabase } from "@/integrations/supabase/client";
+import { toast } from "sonner";
 
 interface ConsentModule {
   id: string;
   name: string;
-  description: string;
-  hasVideo: boolean;
-  tags: string[];
-  usageCount: number;
-  createdAt: string;
+  description: string | null;
+  video_url: string | null;
+  tags: string[] | null;
+  created_at: string;
+  created_by: string;
 }
 
-const mockModules: ConsentModule[] = [
-  {
-    id: "1",
-    name: "Surgical Consent - Knee Replacement",
-    description: "Comprehensive consent for total knee arthroplasty including risks, benefits, and recovery expectations.",
-    hasVideo: true,
-    tags: ["Orthopedics", "Surgery"],
-    usageCount: 45,
-    createdAt: "2024-01-02",
-  },
-  {
-    id: "2",
-    name: "Anesthesia Consent - General",
-    description: "Standard consent for general anesthesia administration with risk disclosure.",
-    hasVideo: true,
-    tags: ["Anesthesia"],
-    usageCount: 89,
-    createdAt: "2024-01-01",
-  },
-  {
-    id: "3",
-    name: "MRI Procedure Consent",
-    description: "Patient consent for MRI imaging including contrast agent information.",
-    hasVideo: false,
-    tags: ["Radiology", "Imaging"],
-    usageCount: 23,
-    createdAt: "2023-12-28",
-  },
-  {
-    id: "4",
-    name: "Physical Therapy Treatment Plan",
-    description: "Consent for physical therapy treatment including manual therapy techniques.",
-    hasVideo: true,
-    tags: ["PT", "Rehabilitation"],
-    usageCount: 67,
-    createdAt: "2023-12-20",
-  },
-  {
-    id: "5",
-    name: "Blood Work Authorization",
-    description: "Authorization for routine blood work and laboratory testing.",
-    hasVideo: false,
-    tags: ["Laboratory"],
-    usageCount: 112,
-    createdAt: "2023-12-15",
-  },
-];
-
 export default function Modules() {
+  const { user, isLoading: authLoading } = useAuth();
+  const navigate = useNavigate();
+  const [modules, setModules] = useState<ConsentModule[]>([]);
+  const [isLoading, setIsLoading] = useState(true);
+  const [searchQuery, setSearchQuery] = useState("");
+  const [filter, setFilter] = useState<"all" | "video" | "text">("all");
+  const [deleteModule, setDeleteModule] = useState<ConsentModule | null>(null);
+  const [isDeleting, setIsDeleting] = useState(false);
+
+  useEffect(() => {
+    if (!authLoading && !user) {
+      navigate("/auth");
+    }
+  }, [user, authLoading, navigate]);
+
+  useEffect(() => {
+    if (user) {
+      fetchModules();
+    }
+  }, [user]);
+
+  const fetchModules = async () => {
+    if (!user) return;
+
+    setIsLoading(true);
+    const { data, error } = await supabase
+      .from("consent_modules")
+      .select("*")
+      .eq("created_by", user.id)
+      .order("created_at", { ascending: false });
+
+    if (error) {
+      console.error("Error fetching modules:", error);
+      toast.error("Failed to load modules");
+    } else {
+      setModules(data || []);
+    }
+    setIsLoading(false);
+  };
+
+  const handleDelete = async () => {
+    if (!deleteModule) return;
+
+    setIsDeleting(true);
+    const { error } = await supabase
+      .from("consent_modules")
+      .delete()
+      .eq("id", deleteModule.id);
+
+    if (error) {
+      console.error("Error deleting module:", error);
+      toast.error("Failed to delete module");
+    } else {
+      toast.success("Module deleted successfully");
+      setModules(modules.filter((m) => m.id !== deleteModule.id));
+    }
+    setIsDeleting(false);
+    setDeleteModule(null);
+  };
+
+  const handleDuplicate = async (module: ConsentModule) => {
+    if (!user) return;
+
+    const { data, error } = await supabase
+      .from("consent_modules")
+      .insert({
+        name: `${module.name} (Copy)`,
+        description: module.description,
+        video_url: module.video_url,
+        tags: module.tags,
+        created_by: user.id,
+      })
+      .select()
+      .single();
+
+    if (error) {
+      console.error("Error duplicating module:", error);
+      toast.error("Failed to duplicate module");
+    } else {
+      toast.success("Module duplicated successfully");
+      setModules([data, ...modules]);
+    }
+  };
+
+  const filteredModules = modules.filter((module) => {
+    const matchesSearch =
+      module.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
+      module.description?.toLowerCase().includes(searchQuery.toLowerCase()) ||
+      module.tags?.some((tag) =>
+        tag.toLowerCase().includes(searchQuery.toLowerCase())
+      );
+
+    const matchesFilter =
+      filter === "all" ||
+      (filter === "video" && module.video_url) ||
+      (filter === "text" && !module.video_url);
+
+    return matchesSearch && matchesFilter;
+  });
+
+  if (authLoading || isLoading) {
+    return (
+      <ProviderLayout>
+        <div className="flex items-center justify-center min-h-[400px]">
+          <Loader2 className="h-8 w-8 animate-spin text-muted-foreground" />
+        </div>
+      </ProviderLayout>
+    );
+  }
+
   return (
     <ProviderLayout>
       <div className="space-y-6">
@@ -105,19 +182,64 @@ export default function Modules() {
             <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
             <Input
               placeholder="Search modules..."
+              value={searchQuery}
+              onChange={(e) => setSearchQuery(e.target.value)}
               className="pl-9 input-focus-ring"
             />
           </div>
           <div className="flex gap-2">
-            <Button variant="outline" size="sm">All</Button>
-            <Button variant="ghost" size="sm">With Video</Button>
-            <Button variant="ghost" size="sm">Text Only</Button>
+            <Button
+              variant={filter === "all" ? "outline" : "ghost"}
+              size="sm"
+              onClick={() => setFilter("all")}
+            >
+              All
+            </Button>
+            <Button
+              variant={filter === "video" ? "outline" : "ghost"}
+              size="sm"
+              onClick={() => setFilter("video")}
+            >
+              With Video
+            </Button>
+            <Button
+              variant={filter === "text" ? "outline" : "ghost"}
+              size="sm"
+              onClick={() => setFilter("text")}
+            >
+              Text Only
+            </Button>
           </div>
         </div>
 
+        {/* Empty State */}
+        {filteredModules.length === 0 && !isLoading && (
+          <div className="text-center py-12">
+            <FileText className="h-12 w-12 text-muted-foreground mx-auto mb-4" />
+            <h3 className="text-lg font-semibold mb-2">
+              {modules.length === 0
+                ? "No modules yet"
+                : "No modules match your search"}
+            </h3>
+            <p className="text-muted-foreground mb-4">
+              {modules.length === 0
+                ? "Create your first consent module to get started"
+                : "Try adjusting your search or filter"}
+            </p>
+            {modules.length === 0 && (
+              <Button asChild>
+                <Link to="/modules/new">
+                  <Plus className="h-4 w-4 mr-2" />
+                  Create Module
+                </Link>
+              </Button>
+            )}
+          </div>
+        )}
+
         {/* Modules Grid */}
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-          {mockModules.map((module, index) => (
+          {filteredModules.map((module, index) => (
             <div
               key={module.id}
               className="card-interactive p-6 animate-fade-in"
@@ -128,7 +250,7 @@ export default function Modules() {
                   <div className="p-2.5 rounded-xl bg-primary/10">
                     <FileText className="h-5 w-5 text-primary" />
                   </div>
-                  {module.hasVideo && (
+                  {module.video_url && (
                     <Badge variant="secondary" className="gap-1">
                       <Video className="h-3 w-3" />
                       Video
@@ -148,12 +270,15 @@ export default function Modules() {
                         Edit
                       </Link>
                     </DropdownMenuItem>
-                    <DropdownMenuItem>
+                    <DropdownMenuItem onClick={() => handleDuplicate(module)}>
                       <Copy className="h-4 w-4 mr-2" />
                       Duplicate
                     </DropdownMenuItem>
                     <DropdownMenuSeparator />
-                    <DropdownMenuItem className="text-destructive">
+                    <DropdownMenuItem
+                      className="text-destructive"
+                      onClick={() => setDeleteModule(module)}
+                    >
                       <Trash2 className="h-4 w-4 mr-2" />
                       Delete
                     </DropdownMenuItem>
@@ -163,11 +288,11 @@ export default function Modules() {
 
               <h3 className="font-semibold mb-2 line-clamp-2">{module.name}</h3>
               <p className="text-sm text-muted-foreground line-clamp-2 mb-4">
-                {module.description}
+                {module.description || "No description"}
               </p>
 
               <div className="flex flex-wrap gap-1.5 mb-4">
-                {module.tags.map((tag) => (
+                {module.tags?.map((tag) => (
                   <Badge key={tag} variant="outline" className="text-xs">
                     {tag}
                   </Badge>
@@ -175,13 +300,40 @@ export default function Modules() {
               </div>
 
               <div className="pt-4 border-t border-border flex items-center justify-between text-sm text-muted-foreground">
-                <span>Used {module.usageCount} times</span>
-                <span>{new Date(module.createdAt).toLocaleDateString()}</span>
+                <span>{new Date(module.created_at).toLocaleDateString()}</span>
               </div>
             </div>
           ))}
         </div>
       </div>
+
+      {/* Delete Confirmation Dialog */}
+      <AlertDialog open={!!deleteModule} onOpenChange={() => setDeleteModule(null)}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Delete Module</AlertDialogTitle>
+            <AlertDialogDescription>
+              Are you sure you want to delete "{deleteModule?.name}"? This action
+              cannot be undone.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel disabled={isDeleting}>Cancel</AlertDialogCancel>
+            <AlertDialogAction
+              onClick={handleDelete}
+              disabled={isDeleting}
+              className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+            >
+              {isDeleting ? (
+                <Loader2 className="h-4 w-4 animate-spin mr-2" />
+              ) : (
+                <Trash2 className="h-4 w-4 mr-2" />
+              )}
+              Delete
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </ProviderLayout>
   );
 }
