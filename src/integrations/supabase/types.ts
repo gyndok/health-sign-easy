@@ -114,9 +114,10 @@ export type Database = {
           id: string
           module_id: string
           patient_email: string
-          patient_first_name: string
-          patient_last_name: string
+          patient_first_name: string | null
+          patient_last_name: string | null
           patient_phone: string | null
+          patient_user_id: string | null
           status: Database["public"]["Enums"]["invite_status"]
           token: string
           viewed_at: string | null
@@ -130,9 +131,10 @@ export type Database = {
           id?: string
           module_id: string
           patient_email: string
-          patient_first_name: string
-          patient_last_name: string
+          patient_first_name?: string | null
+          patient_last_name?: string | null
           patient_phone?: string | null
+          patient_user_id?: string | null
           status?: Database["public"]["Enums"]["invite_status"]
           token?: string
           viewed_at?: string | null
@@ -146,9 +148,10 @@ export type Database = {
           id?: string
           module_id?: string
           patient_email?: string
-          patient_first_name?: string
-          patient_last_name?: string
+          patient_first_name?: string | null
+          patient_last_name?: string | null
           patient_phone?: string | null
+          patient_user_id?: string | null
           status?: Database["public"]["Enums"]["invite_status"]
           token?: string
           viewed_at?: string | null
@@ -162,6 +165,45 @@ export type Database = {
             referencedColumns: ["id"]
           },
         ]
+      }
+      patient_profiles: {
+        Row: {
+          created_at: string
+          date_of_birth: string
+          email: string
+          first_name: string
+          id: string
+          last_name: string
+          phone: string | null
+          preferred_contact: string | null
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          date_of_birth: string
+          email: string
+          first_name: string
+          id?: string
+          last_name: string
+          phone?: string | null
+          preferred_contact?: string | null
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          date_of_birth?: string
+          email?: string
+          first_name?: string
+          id?: string
+          last_name?: string
+          phone?: string | null
+          preferred_contact?: string | null
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: []
       }
       provider_profiles: {
         Row: {

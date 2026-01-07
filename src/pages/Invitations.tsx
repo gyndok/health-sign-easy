@@ -113,7 +113,6 @@ export default function Invitations() {
       console.error("Error fetching invitations:", error);
       toast.error("Failed to load invitations");
     } else {
-      // Check for expired invites and update status
       const now = new Date();
       const updatedInvites = (data || []).map((invite) => {
         if (
@@ -150,7 +149,6 @@ export default function Invitations() {
   };
 
   const handleResend = async (invite: InviteWithModule) => {
-    // Reset expires_at to 7 days from now
     const newExpiresAt = new Date();
     newExpiresAt.setDate(newExpiresAt.getDate() + 7);
 
@@ -167,7 +165,7 @@ export default function Invitations() {
       toast.error("Failed to resend invitation");
     } else {
       toast.success("Invitation resent!", {
-        description: `A new link has been generated for ${invite.patient_first_name}.`,
+        description: `A new link has been generated.`,
       });
       fetchInvitations();
     }
@@ -180,16 +178,15 @@ export default function Invitations() {
   };
 
   const handleSendNew = (invite: InviteWithModule) => {
-    // Navigate to new invitation with pre-filled data
-    navigate(`/invitations/new?module=${invite.module_id}&email=${invite.patient_email}&firstName=${invite.patient_first_name}&lastName=${invite.patient_last_name}`);
+    navigate(`/invitations/new?module=${invite.module_id}&email=${invite.patient_email}`);
   };
 
   const filteredInvitations = invitations.filter((invite) => {
     const matchesSearch =
-      invite.patient_first_name.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      invite.patient_last_name.toLowerCase().includes(searchQuery.toLowerCase()) ||
+      (invite.patient_first_name?.toLowerCase() || "").includes(searchQuery.toLowerCase()) ||
+      (invite.patient_last_name?.toLowerCase() || "").includes(searchQuery.toLowerCase()) ||
       invite.patient_email.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      invite.consent_modules?.name.toLowerCase().includes(searchQuery.toLowerCase());
+      (invite.consent_modules?.name?.toLowerCase() || "").includes(searchQuery.toLowerCase());
 
     const effectiveStatus =
       invite.status === "pending" && new Date(invite.expires_at) < new Date()
@@ -329,7 +326,9 @@ export default function Invitations() {
                         <td className="px-6 py-4">
                           <div>
                             <p className="font-medium text-sm">
-                              {invitation.patient_first_name} {invitation.patient_last_name}
+                              {invitation.patient_first_name && invitation.patient_last_name
+                                ? `${invitation.patient_first_name} ${invitation.patient_last_name}`
+                                : <span className="text-muted-foreground italic">Pending</span>}
                             </p>
                             <p className="text-xs text-muted-foreground">
                               {invitation.patient_email}
@@ -425,8 +424,7 @@ export default function Invitations() {
             <AlertDialogTitle>Delete Invitation</AlertDialogTitle>
             <AlertDialogDescription>
               Are you sure you want to delete the invitation for{" "}
-              {deleteInvite?.patient_first_name} {deleteInvite?.patient_last_name}? This
-              action cannot be undone.
+              {deleteInvite?.patient_email}? This action cannot be undone.
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
