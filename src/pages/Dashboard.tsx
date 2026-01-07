@@ -1,11 +1,94 @@
+import { useEffect, useState } from "react";
+import { useNavigate } from "react-router-dom";
 import { ProviderLayout } from "@/components/layout/ProviderLayout";
 import { StatCard, FileText, Users, Clock, CheckCircle2 } from "@/components/dashboard/StatCard";
 import { RecentSubmissionsTable } from "@/components/dashboard/RecentSubmissionsTable";
 import { QuickActions } from "@/components/dashboard/QuickActions";
 import { Input } from "@/components/ui/input";
 import { Search } from "lucide-react";
+import { useAuth } from "@/hooks/useAuth";
+import { supabase } from "@/integrations/supabase/client";
+
+interface DashboardStats {
+  pendingConsents: number;
+  completedToday: number;
+  totalModules: number;
+  totalPatients: number;
+}
 
 export default function Dashboard() {
+  const { user, profile, isLoading } = useAuth();
+  const navigate = useNavigate();
+  const [stats, setStats] = useState<DashboardStats>({
+    pendingConsents: 0,
+    completedToday: 0,
+    totalModules: 0,
+    totalPatients: 0,
+  });
+
+  useEffect(() => {
+    if (!isLoading && !user) {
+      navigate("/auth");
+    }
+  }, [user, isLoading, navigate]);
+
+  useEffect(() => {
+    if (user) {
+      fetchStats();
+    }
+  }, [user]);
+
+  const fetchStats = async () => {
+    if (!user) return;
+
+    // Fetch pending invites count
+    const { count: pendingCount } = await supabase
+      .from("invites")
+      .select("*", { count: "exact", head: true })
+      .eq("created_by", user.id)
+      .eq("status", "pending");
+
+    // Fetch today's completed count
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+    const { count: completedCount } = await supabase
+      .from("consent_submissions")
+      .select("*", { count: "exact", head: true })
+      .eq("provider_id", user.id)
+      .gte("signed_at", today.toISOString());
+
+    // Fetch total modules count
+    const { count: modulesCount } = await supabase
+      .from("consent_modules")
+      .select("*", { count: "exact", head: true })
+      .eq("created_by", user.id);
+
+    // Fetch unique patients count
+    const { count: patientsCount } = await supabase
+      .from("invites")
+      .select("patient_email", { count: "exact", head: true })
+      .eq("created_by", user.id);
+
+    setStats({
+      pendingConsents: pendingCount || 0,
+      completedToday: completedCount || 0,
+      totalModules: modulesCount || 0,
+      totalPatients: patientsCount || 0,
+    });
+  };
+
+  if (isLoading) {
+    return (
+      <ProviderLayout>
+        <div className="flex items-center justify-center min-h-[400px]">
+          <div className="animate-pulse text-muted-foreground">Loading...</div>
+        </div>
+      </ProviderLayout>
+    );
+  }
+
+  const displayName = profile?.full_name || user?.email?.split("@")[0] || "Provider";
+
   return (
     <ProviderLayout>
       <div className="space-y-8">
@@ -14,7 +97,7 @@ export default function Dashboard() {
           <div>
             <h1 className="text-3xl font-bold font-display">Dashboard</h1>
             <p className="text-muted-foreground mt-1">
-              Welcome back, Dr. Roberts. Here's your consent overview.
+              Welcome back, {displayName}. Here's your consent overview.
             </p>
           </div>
           <div className="relative w-full sm:w-72">
@@ -30,33 +113,31 @@ export default function Dashboard() {
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
           <StatCard
             title="Pending Consents"
-            value={12}
+            value={stats.pendingConsents}
             description="Awaiting patient signature"
             icon={Clock}
             variant="warning"
           />
           <StatCard
             title="Completed Today"
-            value={8}
+            value={stats.completedToday}
             description="Signed consents"
             icon={CheckCircle2}
             variant="success"
-            trend={{ value: 23, isPositive: true }}
           />
           <StatCard
             title="Total Modules"
-            value={24}
+            value={stats.totalModules}
             description="Active consent forms"
             icon={FileText}
             variant="primary"
           />
           <StatCard
             title="Total Patients"
-            value={156}
-            description="In your practice"
+            value={stats.totalPatients}
+            description="Invited to sign"
             icon={Users}
             variant="default"
-            trend={{ value: 12, isPositive: true }}
           />
         </div>
 
