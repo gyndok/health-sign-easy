@@ -4,6 +4,13 @@ import { TooltipProvider } from "@/components/ui/tooltip";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { BrowserRouter, Routes, Route } from "react-router-dom";
 import Index from "./pages/Index";
+import Auth from "./pages/Auth";
+import Dashboard from "./pages/Dashboard";
+import Modules from "./pages/Modules";
+import ModuleEditor from "./pages/ModuleEditor";
+import Invitations from "./pages/Invitations";
+import NewInvitation from "./pages/NewInvitation";
+import ConsentSigning from "./pages/ConsentSigning";
 import NotFound from "./pages/NotFound";
 
 const queryClient = new QueryClient();
@@ -16,6 +23,14 @@ const App = () => (
       <BrowserRouter>
         <Routes>
           <Route path="/" element={<Index />} />
+          <Route path="/auth" element={<Auth />} />
+          <Route path="/dashboard" element={<Dashboard />} />
+          <Route path="/modules" element={<Modules />} />
+          <Route path="/modules/new" element={<ModuleEditor />} />
+          <Route path="/modules/:id/edit" element={<ModuleEditor />} />
+          <Route path="/invitations" element={<Invitations />} />
+          <Route path="/invitations/new" element={<NewInvitation />} />
+          <Route path="/consent/:token" element={<ConsentSigning />} />
           {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
           <Route path="*" element={<NotFound />} />
         </Routes>
