@@ -11,12 +11,13 @@ const corsHeaders = {
 
 interface SendInviteEmailRequest {
   inviteId: string;
+  inviteToken?: string;
   patientEmail: string;
   moduleName: string;
   providerName: string;
   practiceName: string;
   customMessage?: string;
-  consentLink: string;
+  consentLink?: string;
 }
 
 const handler = async (req: Request): Promise<Response> => {
@@ -33,11 +34,22 @@ const handler = async (req: Request): Promise<Response> => {
       practiceName,
       customMessage,
       consentLink,
+      inviteToken,
     }: SendInviteEmailRequest = await req.json();
 
     console.log("Sending invitation email to:", patientEmail);
 
-    console.log("Sending invitation email to:", patientEmail);
+    const publicAppUrl = (Deno.env.get("PUBLIC_APP_URL") || "").replace(/\/$/, "");
+    const resolvedConsentLink =
+      publicAppUrl && inviteToken
+        ? `${publicAppUrl}/consent/${inviteToken}`
+        : consentLink;
+
+    if (!resolvedConsentLink) {
+      throw new Error(
+        "Missing consent link. Provide consentLink or set PUBLIC_APP_URL and inviteToken."
+      );
+    }
 
     const emailHtml = `
       <!DOCTYPE html>
@@ -76,7 +88,7 @@ const handler = async (req: Request): Promise<Response> => {
             </p>
             
             <div style="text-align: center; margin: 30px 0;">
-              <a href="${consentLink}" style="display: inline-block; background: linear-gradient(135deg, #0ea5e9 0%, #0284c7 100%); color: white; padding: 14px 32px; text-decoration: none; border-radius: 8px; font-weight: 600; font-size: 16px;">
+              <a href="${resolvedConsentLink}" style="display: inline-block; background: linear-gradient(135deg, #0ea5e9 0%, #0284c7 100%); color: white; padding: 14px 32px; text-decoration: none; border-radius: 8px; font-weight: 600; font-size: 16px;">
                 Review & Sign Consent
               </a>
             </div>
