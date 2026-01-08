@@ -197,6 +197,14 @@ export default function Invitations() {
       return;
     }
 
+    // Open a tab immediately (otherwise browsers may block it as a popup)
+    const pdfTab = window.open("about:blank", "_blank");
+    if (!pdfTab) {
+      toast.error("Popup blocked — please allow popups to open the PDF");
+      return;
+    }
+    pdfTab.opener = null;
+
     const toastId = regenerate ? "pdf-regen" : "pdf-download";
     toast.loading(regenerate ? "Regenerating PDF..." : "Preparing PDF...", { id: toastId });
 
@@ -207,11 +215,16 @@ export default function Invitations() {
     if (error || !data?.pdfUrl) {
       console.error("PDF error:", error);
       toast.error("Failed to open PDF", { id: toastId });
+      try {
+        pdfTab.close();
+      } catch {
+        // ignore
+      }
       return;
     }
 
     toast.success("Opening PDF...", { id: toastId });
-    window.open(data.pdfUrl, "_blank", "noopener,noreferrer");
+    pdfTab.location.href = data.pdfUrl;
 
     // Keep list fresh (pdf_url may update)
     fetchInvitations();
