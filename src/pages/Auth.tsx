@@ -94,6 +94,7 @@ export default function Auth() {
           return;
         }
         toast.success("Welcome back!");
+        // Don't navigate here - let the useEffect handle redirect based on role
       } else {
         const { error } = await signUp(email, password, fullName, selectedRole);
         if (error) {
@@ -106,11 +107,11 @@ export default function Auth() {
           return;
         }
         toast.success("Account created successfully!");
+        // For signup, we know the role they selected
+        navigate(selectedRole === "patient" ? "/patient-dashboard" : "/dashboard");
       }
-      navigate(mode === "signup" && selectedRole === "patient" ? "/patient-dashboard" : "/dashboard");
     } catch (err) {
       toast.error("An unexpected error occurred");
-    } finally {
       setIsLoading(false);
     }
   };
