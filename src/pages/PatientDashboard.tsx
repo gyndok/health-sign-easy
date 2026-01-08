@@ -309,60 +309,62 @@ export default function PatientDashboard() {
 
       {/* View Materials Dialog */}
       <Dialog open={viewMaterialsOpen} onOpenChange={setViewMaterialsOpen}>
-        <DialogContent className="max-w-3xl max-h-[90vh] overflow-y-auto">
-          <DialogHeader>
+        <DialogContent className="max-w-3xl max-h-[90vh] flex flex-col">
+          <DialogHeader className="flex-shrink-0">
             <DialogTitle>{selectedSubmission?.consent_modules?.name}</DialogTitle>
             <DialogDescription>
               Review the educational materials for this consent
             </DialogDescription>
           </DialogHeader>
 
-          {selectedSubmission?.consent_modules?.video_url && (
-            <div className="aspect-video bg-muted rounded-lg overflow-hidden">
-              {(() => {
-                const url = selectedSubmission.consent_modules.video_url;
-                const youtubeMatch = url.match(
-                  /(?:youtube\.com\/(?:watch\?v=|embed\/)|youtu\.be\/)([a-zA-Z0-9_-]{11})/
-                );
-                if (youtubeMatch) {
-                  return (
-                    <iframe
-                      src={`https://www.youtube.com/embed/${youtubeMatch[1]}`}
-                      title="Educational Video"
-                      allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
-                      allowFullScreen
-                      className="w-full h-full"
-                    />
+          <div className="flex-1 overflow-y-auto space-y-4">
+            {selectedSubmission?.consent_modules?.video_url && (
+              <div className="aspect-video bg-muted rounded-lg overflow-hidden flex-shrink-0">
+                {(() => {
+                  const url = selectedSubmission.consent_modules.video_url;
+                  const youtubeMatch = url.match(
+                    /(?:youtube\.com\/(?:watch\?v=|embed\/)|youtu\.be\/)([a-zA-Z0-9_-]{11})/
                   );
-                }
-                const vimeoMatch = url.match(/vimeo\.com\/(\d+)/);
-                if (vimeoMatch) {
-                  return (
-                    <iframe
-                      src={`https://player.vimeo.com/video/${vimeoMatch[1]}`}
-                      title="Educational Video"
-                      allow="autoplay; fullscreen; picture-in-picture"
-                      allowFullScreen
-                      className="w-full h-full"
-                    />
-                  );
-                }
-                return <video src={url} controls className="w-full h-full" />;
-              })()}
-            </div>
-          )}
-
-          {selectedSubmission?.consent_modules?.description && (
-            <div className="mt-4 p-4 rounded-lg bg-muted">
-              <h4 className="font-medium mb-2 flex items-center gap-2">
-                <Eye className="h-4 w-4" />
-                Consent Information
-              </h4>
-              <div className="text-sm text-muted-foreground whitespace-pre-wrap">
-                {selectedSubmission.consent_modules.description}
+                  if (youtubeMatch) {
+                    return (
+                      <iframe
+                        src={`https://www.youtube.com/embed/${youtubeMatch[1]}`}
+                        title="Educational Video"
+                        allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
+                        allowFullScreen
+                        className="w-full h-full"
+                      />
+                    );
+                  }
+                  const vimeoMatch = url.match(/vimeo\.com\/(\d+)/);
+                  if (vimeoMatch) {
+                    return (
+                      <iframe
+                        src={`https://player.vimeo.com/video/${vimeoMatch[1]}`}
+                        title="Educational Video"
+                        allow="autoplay; fullscreen; picture-in-picture"
+                        allowFullScreen
+                        className="w-full h-full"
+                      />
+                    );
+                  }
+                  return <video src={url} controls className="w-full h-full" />;
+                })()}
               </div>
-            </div>
-          )}
+            )}
+
+            {selectedSubmission?.consent_modules?.description && (
+              <div className="p-4 rounded-lg bg-muted">
+                <h4 className="font-medium mb-2 flex items-center gap-2">
+                  <Eye className="h-4 w-4" />
+                  Consent Information
+                </h4>
+                <div className="text-sm text-muted-foreground whitespace-pre-wrap">
+                  {selectedSubmission.consent_modules.description}
+                </div>
+              </div>
+            )}
+          </div>
         </DialogContent>
       </Dialog>
 
