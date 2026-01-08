@@ -13,6 +13,9 @@ import {
   Loader2,
   UserPlus,
   UserCheck,
+  LogIn,
+  Lock,
+  Mail,
 } from "lucide-react";
 import { toast } from "sonner";
 import { supabase } from "@/integrations/supabase/client";
@@ -34,7 +37,7 @@ interface InviteData {
   provider_practice_name: string | null;
 }
 
-type OnboardingMode = "choice" | "guest" | "account" | "complete";
+type OnboardingMode = "choice" | "guest" | "account" | "login" | "complete";
 
 export default function ConsentSigning() {
   const { token } = useParams();
@@ -53,6 +56,8 @@ export default function ConsentSigning() {
   const [preferredContact, setPreferredContact] = useState("email");
   const [password, setPassword] = useState("");
   const [confirmPassword, setConfirmPassword] = useState("");
+  const [loginEmail, setLoginEmail] = useState("");
+  const [loginPassword, setLoginPassword] = useState("");
   
   // Consent state
   const [videoWatched, setVideoWatched] = useState(false);
@@ -230,6 +235,57 @@ export default function ConsentSigning() {
     setIsSubmitting(false);
   };
 
+  const handleLogin = async () => {
+    if (!loginEmail.trim() || !loginPassword) {
+      toast.error("Please enter your email and password");
+      return;
+    }
+
+    setIsSubmitting(true);
+
+    const { data: authData, error: authError } = await supabase.auth.signInWithPassword({
+      email: loginEmail.trim(),
+      password: loginPassword,
+    });
+
+    if (authError) {
+      console.error("Error signing in:", authError);
+      if (authError.message.includes("Invalid login credentials")) {
+        toast.error("Invalid email or password");
+      } else {
+        toast.error(authError.message);
+      }
+      setIsSubmitting(false);
+      return;
+    }
+
+    // Link patient user to invite and get their name
+    if (authData.user) {
+      // Get patient profile for name
+      const { data: patientProfile } = await supabase
+        .from("patient_profiles")
+        .select("first_name, last_name")
+        .eq("user_id", authData.user.id)
+        .maybeSingle();
+
+      if (patientProfile) {
+        setFirstName(patientProfile.first_name);
+        setLastName(patientProfile.last_name);
+      }
+
+      // Link invite to user
+      await supabase.rpc("link_invite_patient_user_by_token", {
+        p_token: token,
+        p_first_name: patientProfile?.first_name || "",
+        p_last_name: patientProfile?.last_name || "",
+      });
+    }
+
+    toast.success("Signed in successfully!");
+    setOnboardingMode("complete");
+    setIsSubmitting(false);
+  };
+
   const handleSubmit = async () => {
     if (!canSubmit || !invite || !token) return;
 
@@ -381,28 +437,136 @@ export default function ConsentSigning() {
             </p>
           </div>
 
-          <div className="grid gap-4 sm:grid-cols-2">
+          <div className="grid gap-4 sm:grid-cols-3">
             <button
               onClick={() => setOnboardingMode("guest")}
-              className="card-interactive p-6 text-left hover:border-primary transition-colors"
+              className="card-interactive p-5 text-left hover:border-primary transition-colors"
             >
-              <UserCheck className="h-8 w-8 text-primary mb-4" />
-              <h3 className="font-semibold mb-2">Continue as Guest</h3>
-              <p className="text-sm text-muted-foreground">
-                Sign this consent without creating an account. Quick and easy.
+              <UserCheck className="h-7 w-7 text-primary mb-3" />
+              <h3 className="font-semibold mb-1.5 text-sm">Continue as Guest</h3>
+              <p className="text-xs text-muted-foreground">
+                Quick and easy, no account needed.
+              </p>
+            </button>
+
+            <button
+              onClick={() => {
+                setLoginEmail(invite?.patient_email || "");
+                setOnboardingMode("login");
+              }}
+              className="card-interactive p-5 text-left hover:border-primary transition-colors"
+            >
+              <LogIn className="h-7 w-7 text-primary mb-3" />
+              <h3 className="font-semibold mb-1.5 text-sm">Sign In</h3>
+              <p className="text-xs text-muted-foreground">
+                Already have an account? Sign in here.
               </p>
             </button>
 
             <button
               onClick={() => setOnboardingMode("account")}
-              className="card-interactive p-6 text-left hover:border-primary transition-colors"
+              className="card-interactive p-5 text-left hover:border-primary transition-colors"
             >
-              <UserPlus className="h-8 w-8 text-primary mb-4" />
-              <h3 className="font-semibold mb-2">Create an Account</h3>
-              <p className="text-sm text-muted-foreground">
-                Save your information for future consent forms and access your history.
+              <UserPlus className="h-7 w-7 text-primary mb-3" />
+              <h3 className="font-semibold mb-1.5 text-sm">Create Account</h3>
+              <p className="text-xs text-muted-foreground">
+                Save your info for future visits.
               </p>
             </button>
+          </div>
+        </main>
+      </div>
+    );
+  }
+
+  // Onboarding: Login form
+  if (onboardingMode === "login") {
+    return (
+      <div className="min-h-screen bg-background">
+        <header className="sticky top-0 z-50 border-b border-border bg-background/95 backdrop-blur">
+          <div className="container flex h-16 items-center">
+            <div className="flex items-center gap-2.5">
+              <div className="flex h-9 w-9 items-center justify-center rounded-lg bg-primary text-primary-foreground">
+                <Shield className="h-5 w-5" />
+              </div>
+              <span className="font-display text-xl font-bold">ClearConsent</span>
+            </div>
+          </div>
+        </header>
+
+        <main className="container py-6 sm:py-8 px-4 sm:px-6 max-w-md">
+          <Button
+            variant="ghost"
+            size="sm"
+            onClick={() => setOnboardingMode("choice")}
+            className="mb-6"
+          >
+            ← Back
+          </Button>
+
+          <h1 className="text-2xl font-bold font-display mb-2">
+            Sign In to Your Account
+          </h1>
+          <p className="text-muted-foreground mb-8">
+            Sign in to link this consent to your patient profile.
+          </p>
+
+          <div className="space-y-5">
+            <div className="space-y-2">
+              <Label htmlFor="loginEmail">Email Address</Label>
+              <div className="relative">
+                <Mail className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+                <Input
+                  id="loginEmail"
+                  type="email"
+                  placeholder="your@email.com"
+                  value={loginEmail}
+                  onChange={(e) => setLoginEmail(e.target.value)}
+                  className="input-focus-ring pl-10 text-base"
+                />
+              </div>
+            </div>
+
+            <div className="space-y-2">
+              <Label htmlFor="loginPassword">Password</Label>
+              <div className="relative">
+                <Lock className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+                <Input
+                  id="loginPassword"
+                  type="password"
+                  placeholder="••••••••"
+                  value={loginPassword}
+                  onChange={(e) => setLoginPassword(e.target.value)}
+                  className="input-focus-ring pl-10 text-base"
+                />
+              </div>
+            </div>
+
+            <Button
+              onClick={handleLogin}
+              className="w-full"
+              disabled={isSubmitting}
+            >
+              {isSubmitting ? (
+                <>
+                  <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                  Signing In...
+                </>
+              ) : (
+                "Sign In & Continue"
+              )}
+            </Button>
+
+            <p className="text-center text-sm text-muted-foreground">
+              Don't have an account?{" "}
+              <button
+                type="button"
+                onClick={() => setOnboardingMode("account")}
+                className="text-primary font-medium hover:underline"
+              >
+                Create one
+              </button>
+            </p>
           </div>
         </main>
       </div>
