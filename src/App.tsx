@@ -12,6 +12,7 @@ import ModuleEditor from "./pages/ModuleEditor";
 import Invitations from "./pages/Invitations";
 import NewInvitation from "./pages/NewInvitation";
 import ConsentSigning from "./pages/ConsentSigning";
+import Settings from "./pages/Settings";
 import NotFound from "./pages/NotFound";
 
 const queryClient = new QueryClient();
@@ -33,6 +34,7 @@ const App = () => (
             <Route path="/invitations" element={<Invitations />} />
             <Route path="/invitations/new" element={<NewInvitation />} />
             <Route path="/consent/:token" element={<ConsentSigning />} />
+            <Route path="/settings" element={<Settings />} />
             {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
             <Route path="*" element={<NotFound />} />
           </Routes>
