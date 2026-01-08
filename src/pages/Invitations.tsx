@@ -19,6 +19,7 @@ import {
   Copy,
   ExternalLink,
   FileDown,
+  AlertTriangle,
 } from "lucide-react";
 import {
   DropdownMenu,
@@ -42,7 +43,13 @@ import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 import { Tables } from "@/integrations/supabase/types";
 
-type InviteStatus = "pending" | "viewed" | "completed" | "expired";
+type InviteStatus = "pending" | "viewed" | "completed" | "expired" | "withdrawn";
+
+interface ConsentWithdrawal {
+  id: string;
+  withdrawn_at: string;
+  reason: string | null;
+}
 
 interface InviteWithModule extends Tables<"invites"> {
   consent_modules: {
@@ -51,10 +58,11 @@ interface InviteWithModule extends Tables<"invites"> {
   consent_submissions: {
     id: string;
     pdf_url: string | null;
+    consent_withdrawals: ConsentWithdrawal | ConsentWithdrawal[] | null;
   }[] | null;
 }
 
-const statusConfig: Record<InviteStatus, { variant: "default" | "secondary" | "destructive" | "outline"; label: string; icon: typeof Clock }> = {
+const statusConfig: Record<InviteStatus, { variant: "default" | "secondary" | "destructive" | "outline" | "success"; label: string; icon: typeof Clock }> = {
   pending: {
     variant: "secondary",
     label: "Pending",
@@ -66,7 +74,7 @@ const statusConfig: Record<InviteStatus, { variant: "default" | "secondary" | "d
     icon: Eye,
   },
   completed: {
-    variant: "default",
+    variant: "success",
     label: "Completed",
     icon: CheckCircle2,
   },
@@ -74,6 +82,11 @@ const statusConfig: Record<InviteStatus, { variant: "default" | "secondary" | "d
     variant: "destructive",
     label: "Expired",
     icon: XCircle,
+  },
+  withdrawn: {
+    variant: "destructive",
+    label: "Withdrawn",
+    icon: AlertTriangle,
   },
 };
 
@@ -112,7 +125,12 @@ export default function Invitations() {
         ),
         consent_submissions (
           id,
-          pdf_url
+          pdf_url,
+          consent_withdrawals (
+            id,
+            withdrawn_at,
+            reason
+          )
         )
       `)
       .eq("created_by", user.id)
@@ -242,6 +260,27 @@ export default function Invitations() {
     fetchInvitations();
   };
 
+  // Helper to check if an invite has a withdrawal
+  const getWithdrawal = (invite: InviteWithModule): ConsentWithdrawal | null => {
+    const submission = invite.consent_submissions?.[0];
+    if (!submission) return null;
+    const w = submission.consent_withdrawals;
+    if (!w) return null;
+    return Array.isArray(w) ? w[0] ?? null : w;
+  };
+
+  const getEffectiveStatus = (invite: InviteWithModule): InviteStatus => {
+    // Check for withdrawal first (takes priority over completed)
+    if (invite.status === "completed" && getWithdrawal(invite)) {
+      return "withdrawn";
+    }
+    // Check for expiration
+    if (invite.status === "pending" && new Date(invite.expires_at) < new Date()) {
+      return "expired";
+    }
+    return invite.status as InviteStatus;
+  };
+
   const filteredInvitations = invitations.filter((invite) => {
     const matchesSearch =
       (invite.patient_first_name?.toLowerCase() || "").includes(searchQuery.toLowerCase()) ||
@@ -249,10 +288,7 @@ export default function Invitations() {
       invite.patient_email.toLowerCase().includes(searchQuery.toLowerCase()) ||
       (invite.consent_modules?.name?.toLowerCase() || "").includes(searchQuery.toLowerCase());
 
-    const effectiveStatus =
-      invite.status === "pending" && new Date(invite.expires_at) < new Date()
-        ? "expired"
-        : invite.status;
+    const effectiveStatus = getEffectiveStatus(invite);
 
     const matchesStatus =
       statusFilter === "all" || effectiveStatus === statusFilter;
@@ -301,7 +337,7 @@ export default function Invitations() {
             />
           </div>
           <div className="flex gap-2 flex-wrap">
-            {(["all", "pending", "viewed", "completed", "expired"] as const).map(
+            {(["all", "pending", "viewed", "completed", "withdrawn", "expired"] as const).map(
               (status) => (
                 <Button
                   key={status}
@@ -370,11 +406,7 @@ export default function Invitations() {
                 </thead>
                 <tbody className="divide-y divide-border">
                   {filteredInvitations.map((invitation, index) => {
-                    const effectiveStatus =
-                      invitation.status === "pending" &&
-                      new Date(invitation.expires_at) < new Date()
-                        ? "expired"
-                        : (invitation.status as InviteStatus);
+                    const effectiveStatus = getEffectiveStatus(invitation);
                     const status = statusConfig[effectiveStatus];
                     const StatusIcon = status.icon;
 
@@ -425,7 +457,7 @@ export default function Invitations() {
                               </Button>
                             </DropdownMenuTrigger>
                             <DropdownMenuContent align="end">
-                              {effectiveStatus !== "completed" && effectiveStatus !== "expired" && (
+                              {effectiveStatus !== "completed" && effectiveStatus !== "expired" && effectiveStatus !== "withdrawn" && (
                                 <>
                                   <DropdownMenuItem
                                     onClick={() => handleCopyLink(invitation.token)}
@@ -457,7 +489,7 @@ export default function Invitations() {
                                   Send New Invite
                                 </DropdownMenuItem>
                               )}
-                              {effectiveStatus === "completed" && (
+                              {(effectiveStatus === "completed" || effectiveStatus === "withdrawn") && (
                                 <>
                                   <DropdownMenuItem onClick={() => openPdf(invitation)}>
                                     <FileDown className="h-4 w-4 mr-2" />
