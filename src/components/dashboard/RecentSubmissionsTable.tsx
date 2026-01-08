@@ -26,6 +26,12 @@ import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
 import { format } from "date-fns";
 
+type ConsentWithdrawal = {
+  id: string;
+  withdrawn_at: string;
+  reason: string | null;
+};
+
 interface SubmissionWithModule {
   id: string;
   patient_first_name: string;
@@ -36,11 +42,8 @@ interface SubmissionWithModule {
   consent_modules: {
     name: string;
   } | null;
-  consent_withdrawals: Array<{
-    id: string;
-    withdrawn_at: string;
-    reason: string | null;
-  }> | null;
+  // PostgREST returns an object for 1:1 relationships, but some queries/tools may return arrays.
+  consent_withdrawals: ConsentWithdrawal | ConsentWithdrawal[] | null;
 }
 
 export function RecentSubmissionsTable() {
@@ -117,8 +120,13 @@ export function RecentSubmissionsTable() {
     return `${firstName || ""} ${lastName || ""}`.trim() || "Unknown";
   };
 
-  const isWithdrawn = (submission: SubmissionWithModule) => 
-    submission.consent_withdrawals && submission.consent_withdrawals.length > 0;
+  const getWithdrawal = (submission: SubmissionWithModule): ConsentWithdrawal | null => {
+    const w = submission.consent_withdrawals;
+    if (!w) return null;
+    return Array.isArray(w) ? w[0] ?? null : w;
+  };
+
+  const isWithdrawn = (submission: SubmissionWithModule) => !!getWithdrawal(submission);
 
   if (isLoading) {
     return (
@@ -196,6 +204,7 @@ export function RecentSubmissionsTable() {
                   submission.patient_last_name
                 );
                 const signedDate = format(new Date(submission.signed_at), "MMM d, yyyy h:mm a");
+                const withdrawal = getWithdrawal(submission);
                 const withdrawn = isWithdrawn(submission);
                 
                 return (
@@ -231,17 +240,16 @@ export function RecentSubmissionsTable() {
                             </Badge>
                           </TooltipTrigger>
                           <TooltipContent>
-                            <p>
-                              Withdrawn on{" "}
-                              {format(
-                                new Date(submission.consent_withdrawals![0].withdrawn_at),
-                                "MMM d, yyyy"
-                              )}
-                            </p>
-                            {submission.consent_withdrawals![0].reason && (
-                              <p className="text-xs mt-1">
-                                Reason: {submission.consent_withdrawals![0].reason}
-                              </p>
+                            {withdrawal && (
+                              <>
+                                <p>
+                                  Withdrawn on{" "}
+                                  {format(new Date(withdrawal.withdrawn_at), "MMM d, yyyy")}
+                                </p>
+                                {withdrawal.reason && (
+                                  <p className="text-xs mt-1">Reason: {withdrawal.reason}</p>
+                                )}
+                              </>
                             )}
                           </TooltipContent>
                         </Tooltip>
