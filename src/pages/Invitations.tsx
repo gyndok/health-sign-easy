@@ -224,7 +224,31 @@ export default function Invitations() {
     }
 
     toast.success("Opening PDF...", { id: toastId });
-    pdfTab.location.href = data.pdfUrl;
+
+    const pdfUrl: string = data.pdfUrl;
+
+    try {
+      // In some preview/sandboxed environments the popup opens but won't navigate,
+      // so we render a tiny redirect page with a visible link as fallback.
+      const html = `<!doctype html><html><head><meta charset="utf-8" />
+<title>Opening PDF…</title></head>
+<body style="font-family: system-ui, -apple-system, Segoe UI, Roboto, Arial, sans-serif; padding: 24px;">
+  <p>Opening your PDF… If it doesn’t open automatically, <a id="pdf-link" href="#">click here</a>.</p>
+  <script>
+    const url = ${JSON.stringify(pdfUrl)};
+    const a = document.getElementById('pdf-link');
+    if (a) a.setAttribute('href', url);
+    setTimeout(() => window.location.replace(url), 0);
+  </script>
+</body></html>`;
+
+      pdfTab.document.open();
+      pdfTab.document.write(html);
+      pdfTab.document.close();
+    } catch (e) {
+      console.warn("Could not navigate popup to PDF, falling back to same-tab navigation", e);
+      window.location.href = pdfUrl;
+    }
 
     // Keep list fresh (pdf_url may update)
     fetchInvitations();
