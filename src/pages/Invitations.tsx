@@ -454,10 +454,16 @@ export default function Invitations() {
                                 </DropdownMenuItem>
                               )}
                               {effectiveStatus === "completed" && (
-                                <DropdownMenuItem onClick={() => openPdf(invitation)}>
-                                  <FileDown className="h-4 w-4 mr-2" />
-                                  Download PDF
-                                </DropdownMenuItem>
+                                <>
+                                  <DropdownMenuItem onClick={() => openPdf(invitation)}>
+                                    <FileDown className="h-4 w-4 mr-2" />
+                                    Download PDF
+                                  </DropdownMenuItem>
+                                  <DropdownMenuItem onClick={() => openPdf(invitation)}>
+                                    <RefreshCw className="h-4 w-4 mr-2" />
+                                    Regenerate PDF
+                                  </DropdownMenuItem>
+                                </>
                               )}
                               <DropdownMenuSeparator />
                               <DropdownMenuItem
