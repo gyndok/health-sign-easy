@@ -104,6 +104,41 @@ export type Database = {
           },
         ]
       }
+      consent_withdrawals: {
+        Row: {
+          created_at: string
+          id: string
+          patient_user_id: string
+          reason: string | null
+          submission_id: string
+          withdrawn_at: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          patient_user_id: string
+          reason?: string | null
+          submission_id: string
+          withdrawn_at?: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          patient_user_id?: string
+          reason?: string | null
+          submission_id?: string
+          withdrawn_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "consent_withdrawals_submission_id_fkey"
+            columns: ["submission_id"]
+            isOneToOne: true
+            referencedRelation: "consent_submissions"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       invites: {
         Row: {
           completed_at: string | null
