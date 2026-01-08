@@ -201,6 +201,36 @@ export type Database = {
           },
         ]
       }
+      patient_notification_preferences: {
+        Row: {
+          created_at: string
+          email_consent_reminders: boolean
+          email_expiration_alerts: boolean
+          email_provider_updates: boolean
+          id: string
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          email_consent_reminders?: boolean
+          email_expiration_alerts?: boolean
+          email_provider_updates?: boolean
+          id?: string
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          email_consent_reminders?: boolean
+          email_expiration_alerts?: boolean
+          email_provider_updates?: boolean
+          id?: string
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
       patient_profiles: {
         Row: {
           created_at: string
