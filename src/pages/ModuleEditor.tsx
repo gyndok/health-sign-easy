@@ -14,7 +14,9 @@ import {
   FileText,
   X,
   Plus,
-  Loader2
+  Loader2,
+  Sparkles,
+  RefreshCw
 } from "lucide-react";
 import { toast } from "sonner";
 import { useAuth } from "@/hooks/useAuth";
@@ -33,6 +35,8 @@ export default function ModuleEditor() {
   const [showPreview, setShowPreview] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
+  const [isGenerating, setIsGenerating] = useState(false);
+  const [procedureContext, setProcedureContext] = useState("");
 
   const isEditing = !!id;
 
@@ -83,6 +87,38 @@ export default function ModuleEditor() {
 
   const removeTag = (tagToRemove: string) => {
     setTags(tags.filter((tag) => tag !== tagToRemove));
+  };
+
+  const generateConsentText = async () => {
+    if (!name.trim()) {
+      toast.error("Please enter a procedure/module name first");
+      return;
+    }
+
+    setIsGenerating(true);
+    try {
+      const { data, error } = await supabase.functions.invoke("generate-consent-text", {
+        body: {
+          procedureName: name,
+          procedureDescription: procedureContext,
+          additionalContext: tags.length > 0 ? `Specialty: ${tags.join(", ")}` : undefined,
+        },
+      });
+
+      if (error) throw error;
+
+      if (data?.consentText) {
+        setDescription(data.consentText);
+        toast.success("Consent text generated! Review and edit as needed.");
+      } else if (data?.error) {
+        toast.error(data.error);
+      }
+    } catch (error) {
+      console.error("Error generating consent text:", error);
+      toast.error("Failed to generate consent text. Please try again.");
+    } finally {
+      setIsGenerating(false);
+    }
   };
 
   const handleSave = async () => {
@@ -226,6 +262,47 @@ export default function ModuleEditor() {
                 />
               </div>
 
+              {/* AI Generation Section */}
+              <div className="p-4 rounded-lg border border-primary/20 bg-primary/5 space-y-3">
+                <div className="flex items-center gap-2">
+                  <Sparkles className="h-4 w-4 text-primary" />
+                  <Label className="text-sm font-medium">AI Consent Generator</Label>
+                </div>
+                <p className="text-xs text-muted-foreground">
+                  Describe the procedure and let AI draft the consent text for you to review.
+                </p>
+                <Textarea
+                  placeholder="Optional: Describe the procedure, specific risks, or any special considerations..."
+                  value={procedureContext}
+                  onChange={(e) => setProcedureContext(e.target.value)}
+                  className="min-h-[80px] input-focus-ring resize-y text-sm"
+                />
+                <Button
+                  type="button"
+                  variant="secondary"
+                  onClick={generateConsentText}
+                  disabled={isGenerating || !name.trim()}
+                  className="w-full"
+                >
+                  {isGenerating ? (
+                    <>
+                      <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                      Generating...
+                    </>
+                  ) : description ? (
+                    <>
+                      <RefreshCw className="h-4 w-4 mr-2" />
+                      Regenerate Consent Text
+                    </>
+                  ) : (
+                    <>
+                      <Sparkles className="h-4 w-4 mr-2" />
+                      Generate Consent Text
+                    </>
+                  )}
+                </Button>
+              </div>
+
               <div className="space-y-2">
                 <Label htmlFor="description">Consent Text *</Label>
                 <Textarea
@@ -236,7 +313,7 @@ export default function ModuleEditor() {
                   className="min-h-[200px] input-focus-ring resize-y"
                 />
                 <p className="text-xs text-muted-foreground">
-                  Formatting will be preserved. Use line breaks for paragraphs.
+                  {description ? "Review and edit the generated text as needed." : "Formatting will be preserved. Use line breaks for paragraphs."}
                 </p>
               </div>
 
