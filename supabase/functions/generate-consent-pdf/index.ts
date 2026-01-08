@@ -144,7 +144,11 @@ serve(async (req) => {
       ensureSpace(60);
 
       // Section header bar
-      const headerHeight = 20;
+      const headerHeight = 22;
+      const fontSize = 10;
+      // Calculate vertical center: baseline should be at (headerHeight - fontSize) / 2 from bottom of box
+      const textY = yPos - headerHeight + (headerHeight - fontSize) / 2 + 2;
+      
       currentPage.drawRectangle({
         x: MARGIN,
         y: yPos - headerHeight,
@@ -153,9 +157,9 @@ serve(async (req) => {
         color: COLORS.accent,
       });
       currentPage.drawText(title, {
-        x: MARGIN + 8,
-        y: yPos - 14,
-        size: 10,
+        x: MARGIN + 10,
+        y: textY,
+        size: fontSize,
         font: helveticaBold,
         color: rgb(1, 1, 1),
       });
