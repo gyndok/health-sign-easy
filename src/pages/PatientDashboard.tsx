@@ -115,13 +115,12 @@ export default function PatientDashboard() {
     }
 
     try {
-      const { data, error } = await supabase.storage
-        .from("consent-pdfs")
-        .download(submission.pdf_url);
-
-      if (error) throw error;
-
-      const url = URL.createObjectURL(data);
+      // The pdf_url is a signed URL, so fetch it directly
+      const response = await fetch(submission.pdf_url);
+      if (!response.ok) throw new Error("Failed to fetch PDF");
+      
+      const blob = await response.blob();
+      const url = URL.createObjectURL(blob);
       const a = document.createElement("a");
       a.href = url;
       a.download = `consent-${submission.patient_last_name}-${format(new Date(submission.signed_at), "yyyy-MM-dd")}.pdf`;
