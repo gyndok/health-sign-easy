@@ -211,34 +211,34 @@ export default function Invitations() {
       return;
     }
 
-    // Download the freshly generated PDF
-    const fileName = `${invite.created_by}/${submissionId}.pdf`;
-    const { data: fileBlob, error: downloadError } = await supabase.storage
-      .from("consent-pdfs")
-      .download(fileName);
+    // Download the freshly generated PDF directly from signed URL (avoids storage SDK caching)
+    const pdfUrl: string = data.pdfUrl;
 
-    if (downloadError || !fileBlob) {
-      console.warn("Could not download PDF via storage API, falling back to signed URL", downloadError);
+    try {
+      const response = await fetch(pdfUrl);
+      if (!response.ok) throw new Error("Download failed");
+      const fileBlob = await response.blob();
+
+      const objectUrl = URL.createObjectURL(fileBlob);
+      const a = document.createElement("a");
+      a.href = objectUrl;
+
+      // Use a unique filename to avoid the OS/browser re-opening an older cached download
+      const stamp = new Date().toISOString().replace(/[:.]/g, "-");
+      a.download = `consent-${submissionId}-${stamp}.pdf`;
+
+      document.body.appendChild(a);
+      a.click();
+      a.remove();
+      URL.revokeObjectURL(objectUrl);
+
+      toast.success("PDF downloaded", { id: toastId });
+    } catch (e) {
+      console.warn("Could not download PDF via fetch, falling back to opening in new tab", e);
       toast.success("Opening PDF...", { id: toastId });
-      window.open(data.pdfUrl, "_blank", "noopener,noreferrer");
-      fetchInvitations();
-      return;
+      window.open(pdfUrl, "_blank", "noopener,noreferrer");
     }
 
-    const objectUrl = URL.createObjectURL(fileBlob);
-    const a = document.createElement("a");
-    a.href = objectUrl;
-
-    // Use a unique filename to avoid the OS/browser re-opening an older cached download
-    const stamp = new Date().toISOString().replace(/[:.]/g, "-");
-    a.download = `consent-${submissionId}-${stamp}.pdf`;
-
-    document.body.appendChild(a);
-    a.click();
-    a.remove();
-    URL.revokeObjectURL(objectUrl);
-
-    toast.success("PDF downloaded", { id: toastId });
     fetchInvitations();
   };
 
