@@ -17,6 +17,9 @@ interface FormErrors {
 }
 
 export default function Auth() {
+  const navigate = useNavigate();
+  const { user, role: userRole, signIn, signUp } = useAuth();
+  
   const [mode, setMode] = useState<AuthMode>("login");
   const [selectedRole, setSelectedRole] = useState<UserRole>("provider");
   const [email, setEmail] = useState("");
@@ -25,15 +28,13 @@ export default function Auth() {
   const [isLoading, setIsLoading] = useState(false);
   const [errors, setErrors] = useState<FormErrors>({});
   const [touched, setTouched] = useState<Record<string, boolean>>({});
-  const navigate = useNavigate();
-  const { user, role, signIn, signUp } = useAuth();
 
   // Redirect if already logged in
   useEffect(() => {
-    if (user && role) {
-      navigate(role === "patient" ? "/patient-dashboard" : "/dashboard");
+    if (user && userRole) {
+      navigate(userRole === "patient" ? "/patient-dashboard" : "/dashboard");
     }
-  }, [user, role, navigate]);
+  }, [user, userRole, navigate]);
 
   const validateEmail = (email: string) => {
     if (!email.trim()) return "Email is required";
