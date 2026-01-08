@@ -1,6 +1,6 @@
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
-import { PDFDocument, rgb, StandardFonts } from "https://esm.sh/pdf-lib@1.17.1";
+import { PDFDocument, rgb, StandardFonts, PDFPage, PDFFont } from "https://esm.sh/pdf-lib@1.17.1";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -11,6 +11,19 @@ interface GeneratePdfRequest {
   submissionId: string;
   regenerate?: boolean;
 }
+
+// Color palette
+const COLORS = {
+  black: rgb(0, 0, 0),
+  darkGray: rgb(0.2, 0.2, 0.2),
+  gray: rgb(0.4, 0.4, 0.4),
+  lightGray: rgb(0.6, 0.6, 0.6),
+  border: rgb(0.75, 0.75, 0.75),
+  lightBorder: rgb(0.85, 0.85, 0.85),
+  accent: rgb(0.1, 0.3, 0.6),
+  signatureBlue: rgb(0.05, 0.15, 0.5),
+  boxBg: rgb(0.97, 0.97, 0.97),
+};
 
 serve(async (req) => {
   if (req.method === "OPTIONS") {
@@ -43,7 +56,7 @@ serve(async (req) => {
 
     const fileName = `${submission.provider_id}/${submission.id}.pdf`;
 
-    // If caller only wants a URL and the PDF already exists, return a fresh signed URL.
+    // Return existing signed URL if not regenerating
     if (!regenerate) {
       const { data: signedUrlData, error: signedUrlError } = await supabase.storage
         .from("consent-pdfs")
@@ -75,243 +88,352 @@ serve(async (req) => {
 
     // Create PDF
     const pdfDoc = await PDFDocument.create();
-    const timesRoman = await pdfDoc.embedFont(StandardFonts.TimesRoman);
-    const timesRomanBold = await pdfDoc.embedFont(StandardFonts.TimesRomanBold);
     const helvetica = await pdfDoc.embedFont(StandardFonts.Helvetica);
     const helveticaBold = await pdfDoc.embedFont(StandardFonts.HelveticaBold);
+    const timesRoman = await pdfDoc.embedFont(StandardFonts.TimesRoman);
+    const timesItalic = await pdfDoc.embedFont(StandardFonts.TimesRomanItalic);
 
-    const pageWidth = 612;
-    const pageHeight = 792;
-    const margin = 60;
-    const contentWidth = pageWidth - margin * 2;
-    const lineHeight = 14;
-    const sectionGap = 20;
+    const PAGE_WIDTH = 612;
+    const PAGE_HEIGHT = 792;
+    const MARGIN = 54;
+    const CONTENT_WIDTH = PAGE_WIDTH - MARGIN * 2;
+    const FOOTER_HEIGHT = 50;
 
-    let currentPage = pdfDoc.addPage([pageWidth, pageHeight]);
-    let yPos = pageHeight - margin;
+    let currentPage: PDFPage = pdfDoc.addPage([PAGE_WIDTH, PAGE_HEIGHT]);
+    let yPos = PAGE_HEIGHT - MARGIN;
 
-    // Helpers
-    const sanitizeText = (text: string): string => {
-      return text
-        .replace(/[\n\r\t]/g, " ")
-        .replace(/\s+/g, " ")
-        .trim();
-    };
+    // ----- HELPERS -----
+    const sanitize = (text: string): string =>
+      text.replace(/[\n\r\t]/g, " ").replace(/\s+/g, " ").trim();
 
-    const wrapText = (text: string, maxWidth: number, font: typeof timesRoman, fontSize: number): string[] => {
-      const sanitized = sanitizeText(text);
-      const words = sanitized.split(" ");
+    const wrapText = (text: string, font: PDFFont, fontSize: number, maxWidth: number): string[] => {
+      const words = sanitize(text).split(" ");
       const lines: string[] = [];
-      let currentLine = "";
-
+      let line = "";
       for (const word of words) {
-        const testLine = currentLine ? `${currentLine} ${word}` : word;
-        const testWidth = font.widthOfTextAtSize(testLine, fontSize);
-        if (testWidth > maxWidth && currentLine) {
-          lines.push(currentLine);
-          currentLine = word;
+        const test = line ? `${line} ${word}` : word;
+        if (font.widthOfTextAtSize(test, fontSize) > maxWidth && line) {
+          lines.push(line);
+          line = word;
         } else {
-          currentLine = testLine;
+          line = test;
         }
       }
-      if (currentLine) lines.push(currentLine);
+      if (line) lines.push(line);
       return lines;
     };
 
     const ensureSpace = (needed: number) => {
-      if (yPos - needed < margin) {
-        currentPage = pdfDoc.addPage([pageWidth, pageHeight]);
-        yPos = pageHeight - margin;
+      if (yPos - needed < MARGIN + FOOTER_HEIGHT) {
+        currentPage = pdfDoc.addPage([PAGE_WIDTH, PAGE_HEIGHT]);
+        yPos = PAGE_HEIGHT - MARGIN;
       }
     };
 
-    const drawText = (
-      text: string,
-      options: { font?: typeof timesRoman; size?: number; color?: ReturnType<typeof rgb>; indent?: number } = {}
-    ) => {
-      const { font = helvetica, size = 10, color = rgb(0, 0, 0), indent = 0 } = options;
-      currentPage.drawText(text, { x: margin + indent, y: yPos, size, font, color });
-      yPos -= lineHeight;
-    };
-
-    const drawWrappedText = (
-      text: string,
-      options: { font?: typeof timesRoman; size?: number; color?: ReturnType<typeof rgb>; indent?: number } = {}
-    ) => {
-      const { font = helvetica, size = 10, color = rgb(0, 0, 0), indent = 0 } = options;
-      const lines = wrapText(text, contentWidth - indent, font, size);
-      for (const line of lines) {
-        ensureSpace(lineHeight);
-        drawText(line, { font, size, color, indent });
-      }
-    };
-
-    const drawHr = () => {
-      ensureSpace(12);
+    const drawLine = (y: number, color = COLORS.border, thickness = 0.75) => {
       currentPage.drawLine({
-        start: { x: margin, y: yPos + 4 },
-        end: { x: pageWidth - margin, y: yPos + 4 },
-        thickness: 0.75,
-        color: rgb(0.75, 0.75, 0.75),
+        start: { x: MARGIN, y },
+        end: { x: PAGE_WIDTH - MARGIN, y },
+        thickness,
+        color,
       });
-      yPos -= 12;
     };
 
-    // ========== PAGE 1: Header & Patient Info ==========
-    // Title
+    // Draw a boxed section with header
+    const drawSectionBox = (title: string, contentFn: () => void) => {
+      ensureSpace(60);
+
+      // Section header bar
+      const headerHeight = 20;
+      currentPage.drawRectangle({
+        x: MARGIN,
+        y: yPos - headerHeight,
+        width: CONTENT_WIDTH,
+        height: headerHeight,
+        color: COLORS.accent,
+      });
+      currentPage.drawText(title, {
+        x: MARGIN + 8,
+        y: yPos - 14,
+        size: 10,
+        font: helveticaBold,
+        color: rgb(1, 1, 1),
+      });
+      yPos -= headerHeight + 8;
+
+      // Content area
+      const startY = yPos;
+      contentFn();
+      const endY = yPos;
+
+      // Box around content
+      const boxHeight = startY - endY + 12;
+      currentPage.drawRectangle({
+        x: MARGIN,
+        y: endY - 6,
+        width: CONTENT_WIDTH,
+        height: boxHeight,
+        borderColor: COLORS.border,
+        borderWidth: 0.75,
+        color: COLORS.boxBg,
+        opacity: 0,
+      });
+
+      yPos -= 16;
+    };
+
+    const drawLabelValue = (label: string, value: string, indent = 0) => {
+      ensureSpace(16);
+      currentPage.drawText(label, {
+        x: MARGIN + 8 + indent,
+        y: yPos,
+        size: 9,
+        font: helveticaBold,
+        color: COLORS.gray,
+      });
+      const labelWidth = helveticaBold.widthOfTextAtSize(label, 9);
+      currentPage.drawText(value, {
+        x: MARGIN + 8 + indent + labelWidth + 6,
+        y: yPos,
+        size: 10,
+        font: helvetica,
+        color: COLORS.black,
+      });
+      yPos -= 16;
+    };
+
+    const drawParagraph = (text: string, indent = 0) => {
+      const lines = wrapText(text, timesRoman, 10, CONTENT_WIDTH - 16 - indent);
+      for (const line of lines) {
+        ensureSpace(14);
+        currentPage.drawText(line, {
+          x: MARGIN + 8 + indent,
+          y: yPos,
+          size: 10,
+          font: timesRoman,
+          color: COLORS.darkGray,
+        });
+        yPos -= 14;
+      }
+      yPos -= 4;
+    };
+
+    const drawBullet = (text: string, indent = 0) => {
+      const bulletX = MARGIN + 8 + indent;
+      const textX = bulletX + 12;
+      const lines = wrapText(text, timesRoman, 10, CONTENT_WIDTH - 24 - indent);
+
+      for (let i = 0; i < lines.length; i++) {
+        ensureSpace(14);
+        if (i === 0) {
+          currentPage.drawText("•", {
+            x: bulletX,
+            y: yPos,
+            size: 10,
+            font: helvetica,
+            color: COLORS.accent,
+          });
+        }
+        currentPage.drawText(lines[i], {
+          x: textX,
+          y: yPos,
+          size: 10,
+          font: timesRoman,
+          color: COLORS.darkGray,
+        });
+        yPos -= 14;
+      }
+    };
+
+    const drawSubheading = (text: string) => {
+      ensureSpace(24);
+      yPos -= 6;
+      currentPage.drawText(text, {
+        x: MARGIN + 8,
+        y: yPos,
+        size: 11,
+        font: helveticaBold,
+        color: COLORS.accent,
+      });
+      yPos -= 16;
+    };
+
+    // Parse description into structured sections
+    interface Section {
+      heading?: string;
+      paragraphs: string[];
+      bullets: string[];
+    }
+
+    const parseDescription = (desc: string): Section[] => {
+      const sections: Section[] = [];
+      const lines = desc.split(/\n+/);
+      let current: Section = { paragraphs: [], bullets: [] };
+
+      for (const rawLine of lines) {
+        const line = rawLine.trim();
+        if (!line) continue;
+
+        // Check for heading patterns
+        if (line.startsWith("# ")) {
+          if (current.heading || current.paragraphs.length || current.bullets.length) {
+            sections.push(current);
+          }
+          current = { heading: line.slice(2).trim(), paragraphs: [], bullets: [] };
+        } else if (line.startsWith("- ") || line.startsWith("• ")) {
+          current.bullets.push(line.slice(2).trim());
+        } else if (/^[A-Z][^.!?]*$/.test(line) && line.length < 80) {
+          // Short capitalized line without period → treat as heading
+          if (current.heading || current.paragraphs.length || current.bullets.length) {
+            sections.push(current);
+          }
+          current = { heading: line, paragraphs: [], bullets: [] };
+        } else {
+          current.paragraphs.push(line);
+        }
+      }
+      if (current.heading || current.paragraphs.length || current.bullets.length) {
+        sections.push(current);
+      }
+      return sections;
+    };
+
+    // ========== PAGE CONTENT ==========
+
+    // Header
     currentPage.drawText("CONSENT FORM", {
-      x: margin,
+      x: MARGIN,
       y: yPos,
-      size: 22,
+      size: 24,
       font: helveticaBold,
-      color: rgb(0.1, 0.1, 0.1),
+      color: COLORS.black,
     });
-    yPos -= 28;
+    yPos -= 30;
 
     // Provider / Practice
     if (provider) {
-      const practiceName = provider.practice_name || provider.full_name || "Healthcare Provider";
-      currentPage.drawText(practiceName, {
-        x: margin,
-        y: yPos,
-        size: 12,
-        font: helveticaBold,
-        color: rgb(0.25, 0.25, 0.25),
-      });
-      yPos -= 16;
+      const practiceName = provider.practice_name || provider.full_name || "";
+      if (practiceName) {
+        currentPage.drawText(practiceName, {
+          x: MARGIN,
+          y: yPos,
+          size: 12,
+          font: helveticaBold,
+          color: COLORS.darkGray,
+        });
+        yPos -= 16;
+      }
       if (provider.practice_name && provider.full_name) {
         currentPage.drawText(`Provider: ${provider.full_name}`, {
-          x: margin,
+          x: MARGIN,
           y: yPos,
           size: 10,
           font: helvetica,
-          color: rgb(0.4, 0.4, 0.4),
+          color: COLORS.gray,
         });
         yPos -= 14;
       }
     }
-    yPos -= sectionGap / 2;
 
-    drawHr();
+    yPos -= 8;
+    drawLine(yPos);
+    yPos -= 16;
 
     // Procedure
-    ensureSpace(40);
-    currentPage.drawText("PROCEDURE / TREATMENT", {
-      x: margin,
-      y: yPos,
-      size: 11,
-      font: helveticaBold,
-      color: rgb(0.2, 0.2, 0.2),
-    });
-    yPos -= 16;
-    currentPage.drawText(module?.name || "Consent Form", {
-      x: margin,
-      y: yPos,
-      size: 14,
-      font: timesRomanBold,
-      color: rgb(0, 0, 0),
-    });
-    yPos -= sectionGap;
-
-    // Patient Info Box
-    drawHr();
-    ensureSpace(60);
-    currentPage.drawText("PATIENT INFORMATION", {
-      x: margin,
-      y: yPos,
-      size: 11,
-      font: helveticaBold,
-      color: rgb(0.2, 0.2, 0.2),
-    });
-    yPos -= 18;
-    drawText(`Name: ${submission.patient_first_name} ${submission.patient_last_name}`, { font: helvetica, size: 11 });
-    drawText(`Email: ${submission.patient_email}`, { font: helvetica, size: 11 });
-    yPos -= sectionGap;
-
-    // ========== CONSENT INFORMATION (module description) ==========
-    if (module?.description) {
-      drawHr();
-      ensureSpace(40);
-      currentPage.drawText("CONSENT INFORMATION", {
-        x: margin,
+    drawSectionBox("PROCEDURE / TREATMENT", () => {
+      currentPage.drawText(module?.name || "Consent Form", {
+        x: MARGIN + 8,
         y: yPos,
-        size: 11,
+        size: 14,
         font: helveticaBold,
-        color: rgb(0.2, 0.2, 0.2),
+        color: COLORS.black,
       });
       yPos -= 18;
+    });
 
-      // Split into paragraphs
-      const paragraphs = module.description.split(/\n+/).filter((p: string) => p.trim());
-      for (const para of paragraphs) {
-        drawWrappedText(para, { font: timesRoman, size: 10, color: rgb(0.15, 0.15, 0.15) });
-        yPos -= 6; // extra space between paragraphs
-      }
-      yPos -= sectionGap / 2;
+    // Patient Info
+    drawSectionBox("PATIENT INFORMATION", () => {
+      drawLabelValue("Name:", `${submission.patient_first_name} ${submission.patient_last_name}`);
+      drawLabelValue("Email:", submission.patient_email);
+    });
+
+    // Consent Information
+    if (module?.description) {
+      drawSectionBox("CONSENT INFORMATION", () => {
+        const sections = parseDescription(module.description);
+
+        for (const section of sections) {
+          if (section.heading) {
+            drawSubheading(section.heading);
+          }
+          for (const para of section.paragraphs) {
+            drawParagraph(para, section.heading ? 0 : 0);
+          }
+          for (const bullet of section.bullets) {
+            drawBullet(bullet);
+          }
+        }
+      });
     }
 
-    // ========== ACKNOWLEDGMENT ==========
-    drawHr();
-    ensureSpace(80);
-    currentPage.drawText("ACKNOWLEDGMENT", {
-      x: margin,
-      y: yPos,
-      size: 11,
-      font: helveticaBold,
-      color: rgb(0.2, 0.2, 0.2),
-    });
-    yPos -= 18;
-
-    const ackText =
-      "I have reviewed all consent materials and understand the information provided. I voluntarily agree to the procedure/treatment described and understand the risks, benefits, and alternatives.";
-    drawWrappedText(ackText, { font: timesRoman, size: 10 });
-    yPos -= sectionGap;
-
-    // ========== DIGITAL SIGNATURE ==========
-    drawHr();
-    ensureSpace(100);
-    currentPage.drawText("DIGITAL SIGNATURE", {
-      x: margin,
-      y: yPos,
-      size: 11,
-      font: helveticaBold,
-      color: rgb(0.2, 0.2, 0.2),
-    });
-    yPos -= 20;
-
-    // Signature box
-    const sigBoxHeight = 36;
-    currentPage.drawRectangle({
-      x: margin,
-      y: yPos - sigBoxHeight,
-      width: 280,
-      height: sigBoxHeight,
-      borderColor: rgb(0.7, 0.7, 0.7),
-      borderWidth: 1,
+    // Acknowledgment
+    drawSectionBox("ACKNOWLEDGMENT", () => {
+      const ackText =
+        "I have reviewed all consent materials and understand the information provided. I voluntarily agree to the procedure/treatment described and understand the risks, benefits, and alternatives.";
+      drawParagraph(ackText);
     });
 
-    currentPage.drawText(submission.signature, {
-      x: margin + 10,
-      y: yPos - 24,
-      size: 18,
-      font: timesRoman,
-      color: rgb(0, 0, 0.55),
-    });
-    yPos -= sigBoxHeight + 12;
+    // Signature Section (force new page if not enough space)
+    ensureSpace(180);
 
-    const signedDate = new Date(submission.signed_at).toLocaleString("en-US", {
-      weekday: "long",
-      year: "numeric",
-      month: "long",
-      day: "numeric",
-      hour: "2-digit",
-      minute: "2-digit",
-      timeZoneName: "short",
-    });
+    drawSectionBox("DIGITAL SIGNATURE", () => {
+      // Signature box
+      const sigBoxWidth = 280;
+      const sigBoxHeight = 44;
+      currentPage.drawRectangle({
+        x: MARGIN + 8,
+        y: yPos - sigBoxHeight,
+        width: sigBoxWidth,
+        height: sigBoxHeight,
+        borderColor: COLORS.border,
+        borderWidth: 1,
+        color: rgb(1, 1, 1),
+      });
 
-    drawText(`Signed by: ${submission.patient_first_name} ${submission.patient_last_name}`, { font: helvetica, size: 10 });
-    drawText(`Date: ${signedDate}`, { font: helvetica, size: 10 });
-    drawText(`Submission ID: ${submission.id}`, { font: helvetica, size: 9, color: rgb(0.5, 0.5, 0.5) });
+      // Signature text
+      currentPage.drawText(submission.signature, {
+        x: MARGIN + 16,
+        y: yPos - 30,
+        size: 20,
+        font: timesItalic,
+        color: COLORS.signatureBlue,
+      });
+
+      yPos -= sigBoxHeight + 12;
+
+      // Signed info
+      const signedDate = new Date(submission.signed_at).toLocaleString("en-US", {
+        weekday: "long",
+        year: "numeric",
+        month: "long",
+        day: "numeric",
+        hour: "2-digit",
+        minute: "2-digit",
+        timeZoneName: "short",
+      });
+
+      drawLabelValue("Signed by:", `${submission.patient_first_name} ${submission.patient_last_name}`);
+      drawLabelValue("Date:", signedDate);
+      yPos -= 4;
+      currentPage.drawText(`Submission ID: ${submission.id}`, {
+        x: MARGIN + 8,
+        y: yPos,
+        size: 8,
+        font: helvetica,
+        color: COLORS.lightGray,
+      });
+      yPos -= 12;
+    });
 
     // Footer on each page
     const pages = pdfDoc.getPages();
@@ -319,24 +441,24 @@ serve(async (req) => {
     for (let i = 0; i < totalPages; i++) {
       const pg = pages[i];
       pg.drawLine({
-        start: { x: margin, y: margin - 10 },
-        end: { x: pageWidth - margin, y: margin - 10 },
+        start: { x: MARGIN, y: MARGIN },
+        end: { x: PAGE_WIDTH - MARGIN, y: MARGIN },
         thickness: 0.5,
-        color: rgb(0.8, 0.8, 0.8),
+        color: COLORS.lightBorder,
       });
       pg.drawText("This document was electronically signed and is legally binding.", {
-        x: margin,
-        y: margin - 24,
+        x: MARGIN,
+        y: MARGIN - 12,
         size: 8,
         font: helvetica,
-        color: rgb(0.5, 0.5, 0.5),
+        color: COLORS.lightGray,
       });
       pg.drawText(`Generated by ClearConsent  •  Page ${i + 1} of ${totalPages}`, {
-        x: margin,
-        y: margin - 36,
+        x: MARGIN,
+        y: MARGIN - 24,
         size: 8,
         font: helvetica,
-        color: rgb(0.5, 0.5, 0.5),
+        color: COLORS.lightGray,
       });
     }
 
@@ -344,7 +466,7 @@ serve(async (req) => {
     const pdfBytes = await pdfDoc.save();
     console.log("PDF generated, size:", pdfBytes.length, "bytes");
 
-    // Upload to storage
+    // Upload
     const uploadBody = pdfBytes.buffer.slice(pdfBytes.byteOffset, pdfBytes.byteOffset + pdfBytes.byteLength);
     const { error: uploadError } = await supabase.storage
       .from("consent-pdfs")
@@ -368,7 +490,7 @@ serve(async (req) => {
     const pdfUrl = signedUrlData?.signedUrl || null;
     console.log("Signed URL created:", pdfUrl ? "success" : "failed");
 
-    // Update submission with PDF URL
+    // Update submission
     await supabase.from("consent_submissions").update({ pdf_url: pdfUrl }).eq("id", submissionId);
 
     console.log("PDF generated and stored successfully");
