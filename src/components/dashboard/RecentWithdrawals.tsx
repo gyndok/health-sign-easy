@@ -42,12 +42,21 @@ interface WithdrawalWithDetails {
   } | null;
 }
 
+const DISMISSAL_KEY = "recentWithdrawals_dismissed";
+
 export function RecentWithdrawals() {
   const { user } = useAuth();
   const [withdrawals, setWithdrawals] = useState<WithdrawalWithDetails[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [selectedWithdrawal, setSelectedWithdrawal] = useState<WithdrawalWithDetails | null>(null);
-  const [isDismissed, setIsDismissed] = useState(false);
+  const [isDismissed, setIsDismissed] = useState(() => {
+    return localStorage.getItem(DISMISSAL_KEY) === "true";
+  });
+
+  const handleDismiss = () => {
+    setIsDismissed(true);
+    localStorage.setItem(DISMISSAL_KEY, "true");
+  };
 
   useEffect(() => {
     if (user) {
@@ -134,7 +143,7 @@ export function RecentWithdrawals() {
                     variant="ghost"
                     size="icon"
                     className="h-6 w-6"
-                    onClick={() => setIsDismissed(true)}
+                    onClick={handleDismiss}
                   >
                     <X className="h-4 w-4" />
                   </Button>
