@@ -190,27 +190,28 @@ export default function Invitations() {
     navigate(`/invitations/new?module=${invite.module_id}&email=${invite.patient_email}`);
   };
 
-  const openPdf = async (invite: InviteWithModule, regenerate: boolean) => {
+  const openPdf = async (invite: InviteWithModule) => {
     const submissionId = invite.consent_submissions?.[0]?.id;
     if (!submissionId) {
       toast.error("No submission found for this invitation");
       return;
     }
 
-    const toastId = regenerate ? "pdf-regen" : "pdf-download";
-    toast.loading(regenerate ? "Regenerating PDF..." : "Preparing PDF...", { id: toastId });
+    const toastId = "pdf-download";
+    toast.loading("Generating PDF...", { id: toastId });
 
+    // Always regenerate to ensure latest format
     const { data, error } = await supabase.functions.invoke("generate-consent-pdf", {
-      body: { submissionId, regenerate },
+      body: { submissionId, regenerate: true },
     });
 
     if (error || !data?.pdfUrl) {
       console.error("PDF error:", error);
-      toast.error("Failed to prepare PDF", { id: toastId });
+      toast.error("Failed to generate PDF", { id: toastId });
       return;
     }
 
-    // Prefer a real file download (avoids blank PDF tabs / viewer issues)
+    // Download the freshly generated PDF
     const fileName = `${invite.created_by}/${submissionId}.pdf`;
     const { data: fileBlob, error: downloadError } = await supabase.storage
       .from("consent-pdfs")
@@ -233,9 +234,7 @@ export default function Invitations() {
     a.remove();
     URL.revokeObjectURL(objectUrl);
 
-    toast.success("PDF download started", { id: toastId });
-
-    // Keep list fresh (pdf_url may update)
+    toast.success("PDF downloaded", { id: toastId });
     fetchInvitations();
   };
 
@@ -455,16 +454,10 @@ export default function Invitations() {
                                 </DropdownMenuItem>
                               )}
                               {effectiveStatus === "completed" && (
-                                <>
-                                  <DropdownMenuItem onClick={() => openPdf(invitation, false)}>
-                                    <FileDown className="h-4 w-4 mr-2" />
-                                    Download PDF
-                                  </DropdownMenuItem>
-                                  <DropdownMenuItem onClick={() => openPdf(invitation, true)}>
-                                    <RefreshCw className="h-4 w-4 mr-2" />
-                                    Regenerate PDF
-                                  </DropdownMenuItem>
-                                </>
+                                <DropdownMenuItem onClick={() => openPdf(invitation)}>
+                                  <FileDown className="h-4 w-4 mr-2" />
+                                  Download PDF
+                                </DropdownMenuItem>
                               )}
                               <DropdownMenuSeparator />
                               <DropdownMenuItem
