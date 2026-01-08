@@ -3,9 +3,10 @@ import { useNavigate } from "react-router-dom";
 import { ProviderLayout } from "@/components/layout/ProviderLayout";
 import { StatCard, FileText, Users, Clock, CheckCircle2 } from "@/components/dashboard/StatCard";
 import { RecentSubmissionsTable } from "@/components/dashboard/RecentSubmissionsTable";
+import { RecentWithdrawals } from "@/components/dashboard/RecentWithdrawals";
 import { QuickActions } from "@/components/dashboard/QuickActions";
 import { Input } from "@/components/ui/input";
-import { Search } from "lucide-react";
+import { Search, AlertTriangle } from "lucide-react";
 import { useAuth } from "@/hooks/useAuth";
 import { supabase } from "@/integrations/supabase/client";
 
@@ -14,6 +15,7 @@ interface DashboardStats {
   completedToday: number;
   totalModules: number;
   totalPatients: number;
+  withdrawalsCount: number;
 }
 
 export default function Dashboard() {
@@ -24,6 +26,7 @@ export default function Dashboard() {
     completedToday: 0,
     totalModules: 0,
     totalPatients: 0,
+    withdrawalsCount: 0,
   });
 
   useEffect(() => {
@@ -69,11 +72,23 @@ export default function Dashboard() {
       .select("patient_email", { count: "exact", head: true })
       .eq("created_by", user.id);
 
+    // Fetch withdrawals count for this provider's submissions
+    const { data: withdrawalsData } = await supabase
+      .from("consent_withdrawals")
+      .select(`
+        id,
+        consent_submissions!inner (
+          provider_id
+        )
+      `)
+      .eq("consent_submissions.provider_id", user.id);
+
     setStats({
       pendingConsents: pendingCount || 0,
       completedToday: completedCount || 0,
       totalModules: modulesCount || 0,
       totalPatients: patientsCount || 0,
+      withdrawalsCount: withdrawalsData?.length || 0,
     });
   };
 
@@ -110,7 +125,7 @@ export default function Dashboard() {
         </div>
 
         {/* Stats Grid */}
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-4">
           <StatCard
             title="Pending Consents"
             value={stats.pendingConsents}
@@ -139,6 +154,13 @@ export default function Dashboard() {
             icon={Users}
             variant="default"
           />
+          <StatCard
+            title="Withdrawals"
+            value={stats.withdrawalsCount}
+            description="Consents withdrawn"
+            icon={AlertTriangle}
+            variant={stats.withdrawalsCount > 0 ? "warning" : "default"}
+          />
         </div>
 
         {/* Main Content */}
@@ -146,8 +168,9 @@ export default function Dashboard() {
           <div className="lg:col-span-3">
             <RecentSubmissionsTable />
           </div>
-          <div className="lg:col-span-1">
+          <div className="lg:col-span-1 space-y-6">
             <QuickActions />
+            <RecentWithdrawals />
           </div>
         </div>
       </div>
