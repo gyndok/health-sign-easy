@@ -18,7 +18,7 @@ interface FormErrors {
 
 export default function Auth() {
   const [mode, setMode] = useState<AuthMode>("login");
-  const [role, setRole] = useState<UserRole>("provider");
+  const [selectedRole, setSelectedRole] = useState<UserRole>("provider");
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [fullName, setFullName] = useState("");
@@ -26,14 +26,14 @@ export default function Auth() {
   const [errors, setErrors] = useState<FormErrors>({});
   const [touched, setTouched] = useState<Record<string, boolean>>({});
   const navigate = useNavigate();
-  const { user, signIn, signUp } = useAuth();
+  const { user, role, signIn, signUp } = useAuth();
 
   // Redirect if already logged in
   useEffect(() => {
-    if (user) {
-      navigate("/dashboard");
+    if (user && role) {
+      navigate(role === "patient" ? "/patient-dashboard" : "/dashboard");
     }
-  }, [user, navigate]);
+  }, [user, role, navigate]);
 
   const validateEmail = (email: string) => {
     if (!email.trim()) return "Email is required";
@@ -94,7 +94,7 @@ export default function Auth() {
         }
         toast.success("Welcome back!");
       } else {
-        const { error } = await signUp(email, password, fullName, role);
+        const { error } = await signUp(email, password, fullName, selectedRole);
         if (error) {
           if (error.message.includes("already registered")) {
             toast.error("This email is already registered. Please sign in instead.");
@@ -106,7 +106,7 @@ export default function Auth() {
         }
         toast.success("Account created successfully!");
       }
-      navigate("/dashboard");
+      navigate(mode === "signup" && selectedRole === "patient" ? "/patient-dashboard" : "/dashboard");
     } catch (err) {
       toast.error("An unexpected error occurred");
     } finally {
@@ -190,27 +190,27 @@ export default function Auth() {
               <div className="grid grid-cols-2 gap-3">
                 <button
                   type="button"
-                  onClick={() => setRole("provider")}
+                  onClick={() => setSelectedRole("provider")}
                   className={`p-4 rounded-xl border-2 transition-all ${
-                    role === "provider"
+                    selectedRole === "provider"
                       ? "border-primary bg-primary/5"
                       : "border-border hover:border-primary/30"
                   }`}
                 >
-                  <User className={`h-6 w-6 mx-auto mb-2 ${role === "provider" ? "text-primary" : "text-muted-foreground"}`} />
-                  <p className={`text-sm font-medium ${role === "provider" ? "text-primary" : ""}`}>Healthcare Provider</p>
+                  <User className={`h-6 w-6 mx-auto mb-2 ${selectedRole === "provider" ? "text-primary" : "text-muted-foreground"}`} />
+                  <p className={`text-sm font-medium ${selectedRole === "provider" ? "text-primary" : ""}`}>Healthcare Provider</p>
                 </button>
                 <button
                   type="button"
-                  onClick={() => setRole("patient")}
+                  onClick={() => setSelectedRole("patient")}
                   className={`p-4 rounded-xl border-2 transition-all ${
-                    role === "patient"
+                    selectedRole === "patient"
                       ? "border-primary bg-primary/5"
                       : "border-border hover:border-primary/30"
                   }`}
                 >
-                  <User className={`h-6 w-6 mx-auto mb-2 ${role === "patient" ? "text-primary" : "text-muted-foreground"}`} />
-                  <p className={`text-sm font-medium ${role === "patient" ? "text-primary" : ""}`}>Patient</p>
+                  <User className={`h-6 w-6 mx-auto mb-2 ${selectedRole === "patient" ? "text-primary" : "text-muted-foreground"}`} />
+                  <p className={`text-sm font-medium ${selectedRole === "patient" ? "text-primary" : ""}`}>Patient</p>
                 </button>
               </div>
             </div>

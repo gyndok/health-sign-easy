@@ -7,6 +7,7 @@ import { AuthProvider } from "@/hooks/useAuth";
 import Index from "./pages/Index";
 import Auth from "./pages/Auth";
 import Dashboard from "./pages/Dashboard";
+import PatientDashboard from "./pages/PatientDashboard";
 import Modules from "./pages/Modules";
 import ModuleEditor from "./pages/ModuleEditor";
 import Invitations from "./pages/Invitations";
@@ -28,6 +29,7 @@ const App = () => (
             <Route path="/" element={<Index />} />
             <Route path="/auth" element={<Auth />} />
             <Route path="/dashboard" element={<Dashboard />} />
+            <Route path="/patient-dashboard" element={<PatientDashboard />} />
             <Route path="/modules" element={<Modules />} />
             <Route path="/modules/new" element={<ModuleEditor />} />
             <Route path="/modules/:id/edit" element={<ModuleEditor />} />
