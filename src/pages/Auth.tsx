@@ -3,12 +3,18 @@ import { useNavigate } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { Shield, ArrowRight, Mail, Lock, User } from "lucide-react";
+import { Shield, ArrowRight, Mail, Lock, User, Loader2, AlertCircle } from "lucide-react";
 import { toast } from "sonner";
 import { useAuth } from "@/hooks/useAuth";
 
 type AuthMode = "login" | "signup";
 type UserRole = "provider" | "patient";
+
+interface FormErrors {
+  email?: string;
+  password?: string;
+  fullName?: string;
+}
 
 export default function Auth() {
   const [mode, setMode] = useState<AuthMode>("login");
@@ -17,6 +23,8 @@ export default function Auth() {
   const [password, setPassword] = useState("");
   const [fullName, setFullName] = useState("");
   const [isLoading, setIsLoading] = useState(false);
+  const [errors, setErrors] = useState<FormErrors>({});
+  const [touched, setTouched] = useState<Record<string, boolean>>({});
   const navigate = useNavigate();
   const { user, signIn, signUp } = useAuth();
 
@@ -27,8 +35,49 @@ export default function Auth() {
     }
   }, [user, navigate]);
 
+  const validateEmail = (email: string) => {
+    if (!email.trim()) return "Email is required";
+    if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) return "Please enter a valid email";
+    return undefined;
+  };
+
+  const validatePassword = (password: string) => {
+    if (!password) return "Password is required";
+    if (password.length < 6) return "Password must be at least 6 characters";
+    return undefined;
+  };
+
+  const validateFullName = (name: string) => {
+    if (mode === "signup" && !name.trim()) return "Full name is required";
+    if (mode === "signup" && name.trim().length < 2) return "Name must be at least 2 characters";
+    return undefined;
+  };
+
+  const validateForm = () => {
+    const newErrors: FormErrors = {
+      email: validateEmail(email),
+      password: validatePassword(password),
+      fullName: validateFullName(fullName),
+    };
+    setErrors(newErrors);
+    return !newErrors.email && !newErrors.password && !newErrors.fullName;
+  };
+
+  const handleBlur = (field: string) => {
+    setTouched(prev => ({ ...prev, [field]: true }));
+    if (field === "email") setErrors(prev => ({ ...prev, email: validateEmail(email) }));
+    if (field === "password") setErrors(prev => ({ ...prev, password: validatePassword(password) }));
+    if (field === "fullName") setErrors(prev => ({ ...prev, fullName: validateFullName(fullName) }));
+  };
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+    
+    if (!validateForm()) {
+      setTouched({ email: true, password: true, fullName: true });
+      return;
+    }
+
     setIsLoading(true);
 
     try {
@@ -45,12 +94,6 @@ export default function Auth() {
         }
         toast.success("Welcome back!");
       } else {
-        if (password.length < 6) {
-          toast.error("Password must be at least 6 characters");
-          setIsLoading(false);
-          return;
-        }
-        
         const { error } = await signUp(email, password, fullName, role);
         if (error) {
           if (error.message.includes("already registered")) {
@@ -185,10 +228,16 @@ export default function Auth() {
                     placeholder="Dr. Jane Roberts"
                     value={fullName}
                     onChange={(e) => setFullName(e.target.value)}
-                    className="pl-10 input-focus-ring"
-                    required
+                    onBlur={() => handleBlur("fullName")}
+                    className={`pl-10 input-focus-ring ${touched.fullName && errors.fullName ? "border-destructive" : ""}`}
                   />
                 </div>
+                {touched.fullName && errors.fullName && (
+                  <p className="text-xs text-destructive flex items-center gap-1">
+                    <AlertCircle className="h-3 w-3" />
+                    {errors.fullName}
+                  </p>
+                )}
               </div>
             )}
 
@@ -202,10 +251,16 @@ export default function Auth() {
                   placeholder="you@practice.com"
                   value={email}
                   onChange={(e) => setEmail(e.target.value)}
-                  className="pl-10 input-focus-ring"
-                  required
+                  onBlur={() => handleBlur("email")}
+                  className={`pl-10 input-focus-ring ${touched.email && errors.email ? "border-destructive" : ""}`}
                 />
               </div>
+              {touched.email && errors.email && (
+                <p className="text-xs text-destructive flex items-center gap-1">
+                  <AlertCircle className="h-3 w-3" />
+                  {errors.email}
+                </p>
+              )}
             </div>
 
             <div className="space-y-2">
@@ -218,16 +273,24 @@ export default function Auth() {
                   placeholder="••••••••"
                   value={password}
                   onChange={(e) => setPassword(e.target.value)}
-                  className="pl-10 input-focus-ring"
-                  required
-                  minLength={6}
+                  onBlur={() => handleBlur("password")}
+                  className={`pl-10 input-focus-ring ${touched.password && errors.password ? "border-destructive" : ""}`}
                 />
               </div>
+              {touched.password && errors.password && (
+                <p className="text-xs text-destructive flex items-center gap-1">
+                  <AlertCircle className="h-3 w-3" />
+                  {errors.password}
+                </p>
+              )}
             </div>
 
             <Button type="submit" size="lg" className="w-full" disabled={isLoading}>
               {isLoading ? (
-                "Please wait..."
+                <>
+                  <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                  Please wait...
+                </>
               ) : (
                 <>
                   {mode === "login" ? "Sign In" : "Create Account"}
