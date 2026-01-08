@@ -13,7 +13,6 @@ interface GeneratePdfRequest {
 }
 
 serve(async (req) => {
-  // Handle CORS preflight
   if (req.method === "OPTIONS") {
     return new Response(null, { headers: corsHeaders });
   }
@@ -30,23 +29,10 @@ serve(async (req) => {
       throw new Error("submissionId is required");
     }
 
-    // Fetch submission (we need provider_id to build the storage path)
+    // Fetch submission
     const { data: submission, error: fetchError } = await supabase
       .from("consent_submissions")
-      .select(
-        `
-        id,
-        patient_first_name,
-        patient_last_name,
-        patient_email,
-        signature,
-        signed_at,
-        created_at,
-        provider_id,
-        invite_id,
-        module_id
-      `
-      )
+      .select("id, patient_first_name, patient_last_name, patient_email, signature, signed_at, created_at, provider_id, invite_id, module_id")
       .eq("id", submissionId)
       .single();
 
@@ -61,7 +47,7 @@ serve(async (req) => {
     if (!regenerate) {
       const { data: signedUrlData, error: signedUrlError } = await supabase.storage
         .from("consent-pdfs")
-        .createSignedUrl(fileName, 60 * 60); // 1 hour
+        .createSignedUrl(fileName, 60 * 60);
 
       if (!signedUrlError && signedUrlData?.signedUrl) {
         return new Response(
@@ -69,11 +55,10 @@ serve(async (req) => {
           { headers: { ...corsHeaders, "Content-Type": "application/json" } }
         );
       }
-
       console.warn("Could not create signed URL; will regenerate PDF", signedUrlError);
     }
 
-    // Fetch module + provider details (used for PDF contents)
+    // Fetch module + provider details
     const { data: module } = await supabase
       .from("consent_modules")
       .select("name, description")
@@ -92,52 +77,36 @@ serve(async (req) => {
     const pdfDoc = await PDFDocument.create();
     const timesRoman = await pdfDoc.embedFont(StandardFonts.TimesRoman);
     const timesRomanBold = await pdfDoc.embedFont(StandardFonts.TimesRomanBold);
-    
-    const page = pdfDoc.addPage([612, 792]); // Letter size
-    const { width, height } = page.getSize();
-    
-    const margin = 50;
-    let yPosition = height - margin;
-    const lineHeight = 16;
-    const sectionSpacing = 24;
+    const helvetica = await pdfDoc.embedFont(StandardFonts.Helvetica);
+    const helveticaBold = await pdfDoc.embedFont(StandardFonts.HelveticaBold);
 
-    // Helper function to draw text
-    const drawText = (text: string, options: { 
-      font?: typeof timesRoman, 
-      size?: number, 
-      color?: ReturnType<typeof rgb>,
-      indent?: number 
-    } = {}) => {
-      const { font = timesRoman, size = 12, color = rgb(0, 0, 0), indent = 0 } = options;
-      page.drawText(text, {
-        x: margin + indent,
-        y: yPosition,
-        size,
-        font,
-        color,
-      });
-      yPosition -= lineHeight;
-    };
+    const pageWidth = 612;
+    const pageHeight = 792;
+    const margin = 60;
+    const contentWidth = pageWidth - margin * 2;
+    const lineHeight = 14;
+    const sectionGap = 20;
 
-    // Helper to sanitize text for PDF (remove unsupported characters)
+    let currentPage = pdfDoc.addPage([pageWidth, pageHeight]);
+    let yPos = pageHeight - margin;
+
+    // Helpers
     const sanitizeText = (text: string): string => {
       return text
-        .replace(/[\n\r\t]/g, ' ')  // Replace newlines/tabs with spaces
-        .replace(/\s+/g, ' ')       // Collapse multiple spaces
+        .replace(/[\n\r\t]/g, " ")
+        .replace(/\s+/g, " ")
         .trim();
     };
 
-    // Helper to wrap text
-    const wrapText = (text: string, maxWidth: number, fontSize: number): string[] => {
+    const wrapText = (text: string, maxWidth: number, font: typeof timesRoman, fontSize: number): string[] => {
       const sanitized = sanitizeText(text);
-      const words = sanitized.split(' ');
+      const words = sanitized.split(" ");
       const lines: string[] = [];
-      let currentLine = '';
-      
+      let currentLine = "";
+
       for (const word of words) {
         const testLine = currentLine ? `${currentLine} ${word}` : word;
-        const testWidth = timesRoman.widthOfTextAtSize(testLine, fontSize);
-        
+        const testWidth = font.widthOfTextAtSize(testLine, fontSize);
         if (testWidth > maxWidth && currentLine) {
           lines.push(currentLine);
           currentLine = word;
@@ -149,97 +118,187 @@ serve(async (req) => {
       return lines;
     };
 
-    // Header
-    drawText("SIGNED CONSENT FORM", { font: timesRomanBold, size: 18 });
-    yPosition -= 8;
-    
-    // Provider info
-    if (provider) {
-      drawText(provider.practice_name || provider.full_name || "Healthcare Provider", { size: 14, font: timesRomanBold });
-    }
-    yPosition -= sectionSpacing;
-
-    // Horizontal line
-    page.drawLine({
-      start: { x: margin, y: yPosition + 10 },
-      end: { x: width - margin, y: yPosition + 10 },
-      thickness: 1,
-      color: rgb(0.7, 0.7, 0.7),
-    });
-    yPosition -= 10;
-
-    // Module name
-    drawText("Procedure/Treatment:", { font: timesRomanBold, size: 12 });
-    drawText(module?.name || "Consent Form", { size: 12, indent: 10 });
-    yPosition -= sectionSpacing / 2;
-
-    // Patient Information Section
-    drawText("PATIENT INFORMATION", { font: timesRomanBold, size: 14 });
-    yPosition -= 4;
-    drawText(`Name: ${submission.patient_first_name} ${submission.patient_last_name}`, { size: 12 });
-    drawText(`Email: ${submission.patient_email}`, { size: 12 });
-    yPosition -= sectionSpacing;
-
-    // Consent Information Section
-    if (module?.description) {
-      drawText("CONSENT INFORMATION", { font: timesRomanBold, size: 14 });
-      yPosition -= 4;
-      
-      const descriptionLines = wrapText(module.description, width - (margin * 2) - 20, 11);
-      for (const line of descriptionLines) {
-        if (yPosition < margin + 150) {
-          // Add new page if running out of space
-          const newPage = pdfDoc.addPage([612, 792]);
-          yPosition = height - margin;
-        }
-        drawText(line, { size: 11, color: rgb(0.2, 0.2, 0.2) });
+    const ensureSpace = (needed: number) => {
+      if (yPos - needed < margin) {
+        currentPage = pdfDoc.addPage([pageWidth, pageHeight]);
+        yPos = pageHeight - margin;
       }
-      yPosition -= sectionSpacing;
-    }
+    };
 
-    // Acknowledgment Section
-    drawText("ACKNOWLEDGMENT", { font: timesRomanBold, size: 14 });
-    yPosition -= 4;
-    const ackText = "I have reviewed all consent materials and understand the information provided. I voluntarily agree to the procedure/treatment described and understand the risks, benefits, and alternatives.";
-    const ackLines = wrapText(ackText, width - (margin * 2) - 20, 11);
-    for (const line of ackLines) {
-      drawText(line, { size: 11 });
-    }
-    yPosition -= sectionSpacing;
+    const drawText = (
+      text: string,
+      options: { font?: typeof timesRoman; size?: number; color?: ReturnType<typeof rgb>; indent?: number } = {}
+    ) => {
+      const { font = helvetica, size = 10, color = rgb(0, 0, 0), indent = 0 } = options;
+      currentPage.drawText(text, { x: margin + indent, y: yPos, size, font, color });
+      yPos -= lineHeight;
+    };
 
-    // Signature Section
-    page.drawLine({
-      start: { x: margin, y: yPosition + 10 },
-      end: { x: width - margin, y: yPosition + 10 },
-      thickness: 1,
-      color: rgb(0.7, 0.7, 0.7),
-    });
-    yPosition -= 10;
+    const drawWrappedText = (
+      text: string,
+      options: { font?: typeof timesRoman; size?: number; color?: ReturnType<typeof rgb>; indent?: number } = {}
+    ) => {
+      const { font = helvetica, size = 10, color = rgb(0, 0, 0), indent = 0 } = options;
+      const lines = wrapText(text, contentWidth - indent, font, size);
+      for (const line of lines) {
+        ensureSpace(lineHeight);
+        drawText(line, { font, size, color, indent });
+      }
+    };
 
-    drawText("DIGITAL SIGNATURE", { font: timesRomanBold, size: 14 });
-    yPosition -= 8;
-    
-    // Signature box
-    page.drawRectangle({
+    const drawHr = () => {
+      ensureSpace(12);
+      currentPage.drawLine({
+        start: { x: margin, y: yPos + 4 },
+        end: { x: pageWidth - margin, y: yPos + 4 },
+        thickness: 0.75,
+        color: rgb(0.75, 0.75, 0.75),
+      });
+      yPos -= 12;
+    };
+
+    // ========== PAGE 1: Header & Patient Info ==========
+    // Title
+    currentPage.drawText("CONSENT FORM", {
       x: margin,
-      y: yPosition - 30,
-      width: 300,
-      height: 40,
-      borderColor: rgb(0.8, 0.8, 0.8),
+      y: yPos,
+      size: 22,
+      font: helveticaBold,
+      color: rgb(0.1, 0.1, 0.1),
+    });
+    yPos -= 28;
+
+    // Provider / Practice
+    if (provider) {
+      const practiceName = provider.practice_name || provider.full_name || "Healthcare Provider";
+      currentPage.drawText(practiceName, {
+        x: margin,
+        y: yPos,
+        size: 12,
+        font: helveticaBold,
+        color: rgb(0.25, 0.25, 0.25),
+      });
+      yPos -= 16;
+      if (provider.practice_name && provider.full_name) {
+        currentPage.drawText(`Provider: ${provider.full_name}`, {
+          x: margin,
+          y: yPos,
+          size: 10,
+          font: helvetica,
+          color: rgb(0.4, 0.4, 0.4),
+        });
+        yPos -= 14;
+      }
+    }
+    yPos -= sectionGap / 2;
+
+    drawHr();
+
+    // Procedure
+    ensureSpace(40);
+    currentPage.drawText("PROCEDURE / TREATMENT", {
+      x: margin,
+      y: yPos,
+      size: 11,
+      font: helveticaBold,
+      color: rgb(0.2, 0.2, 0.2),
+    });
+    yPos -= 16;
+    currentPage.drawText(module?.name || "Consent Form", {
+      x: margin,
+      y: yPos,
+      size: 14,
+      font: timesRomanBold,
+      color: rgb(0, 0, 0),
+    });
+    yPos -= sectionGap;
+
+    // Patient Info Box
+    drawHr();
+    ensureSpace(60);
+    currentPage.drawText("PATIENT INFORMATION", {
+      x: margin,
+      y: yPos,
+      size: 11,
+      font: helveticaBold,
+      color: rgb(0.2, 0.2, 0.2),
+    });
+    yPos -= 18;
+    drawText(`Name: ${submission.patient_first_name} ${submission.patient_last_name}`, { font: helvetica, size: 11 });
+    drawText(`Email: ${submission.patient_email}`, { font: helvetica, size: 11 });
+    yPos -= sectionGap;
+
+    // ========== CONSENT INFORMATION (module description) ==========
+    if (module?.description) {
+      drawHr();
+      ensureSpace(40);
+      currentPage.drawText("CONSENT INFORMATION", {
+        x: margin,
+        y: yPos,
+        size: 11,
+        font: helveticaBold,
+        color: rgb(0.2, 0.2, 0.2),
+      });
+      yPos -= 18;
+
+      // Split into paragraphs
+      const paragraphs = module.description.split(/\n+/).filter((p: string) => p.trim());
+      for (const para of paragraphs) {
+        drawWrappedText(para, { font: timesRoman, size: 10, color: rgb(0.15, 0.15, 0.15) });
+        yPos -= 6; // extra space between paragraphs
+      }
+      yPos -= sectionGap / 2;
+    }
+
+    // ========== ACKNOWLEDGMENT ==========
+    drawHr();
+    ensureSpace(80);
+    currentPage.drawText("ACKNOWLEDGMENT", {
+      x: margin,
+      y: yPos,
+      size: 11,
+      font: helveticaBold,
+      color: rgb(0.2, 0.2, 0.2),
+    });
+    yPos -= 18;
+
+    const ackText =
+      "I have reviewed all consent materials and understand the information provided. I voluntarily agree to the procedure/treatment described and understand the risks, benefits, and alternatives.";
+    drawWrappedText(ackText, { font: timesRoman, size: 10 });
+    yPos -= sectionGap;
+
+    // ========== DIGITAL SIGNATURE ==========
+    drawHr();
+    ensureSpace(100);
+    currentPage.drawText("DIGITAL SIGNATURE", {
+      x: margin,
+      y: yPos,
+      size: 11,
+      font: helveticaBold,
+      color: rgb(0.2, 0.2, 0.2),
+    });
+    yPos -= 20;
+
+    // Signature box
+    const sigBoxHeight = 36;
+    currentPage.drawRectangle({
+      x: margin,
+      y: yPos - sigBoxHeight,
+      width: 280,
+      height: sigBoxHeight,
+      borderColor: rgb(0.7, 0.7, 0.7),
       borderWidth: 1,
     });
-    
-    page.drawText(submission.signature, {
-      x: margin + 10,
-      y: yPosition - 15,
-      size: 16,
-      font: timesRoman,
-      color: rgb(0, 0, 0.6),
-    });
-    
-    yPosition -= 50;
 
-    // Signature details
+    currentPage.drawText(submission.signature, {
+      x: margin + 10,
+      y: yPos - 24,
+      size: 18,
+      font: timesRoman,
+      color: rgb(0, 0, 0.55),
+    });
+    yPos -= sigBoxHeight + 12;
+
     const signedDate = new Date(submission.signed_at).toLocaleString("en-US", {
       weekday: "long",
       year: "numeric",
@@ -249,62 +308,55 @@ serve(async (req) => {
       minute: "2-digit",
       timeZoneName: "short",
     });
-    
-    drawText(`Signed by: ${submission.patient_first_name} ${submission.patient_last_name}`, { size: 11 });
-    drawText(`Date: ${signedDate}`, { size: 11 });
-    drawText(`Submission ID: ${submission.id}`, { size: 10, color: rgb(0.5, 0.5, 0.5) });
-    
-    yPosition -= sectionSpacing;
 
-    // Footer
-    page.drawLine({
-      start: { x: margin, y: margin + 30 },
-      end: { x: width - margin, y: margin + 30 },
-      thickness: 0.5,
-      color: rgb(0.8, 0.8, 0.8),
-    });
-    
-    page.drawText("This document was electronically signed and is legally binding.", {
-      x: margin,
-      y: margin + 15,
-      size: 9,
-      font: timesRoman,
-      color: rgb(0.5, 0.5, 0.5),
-    });
+    drawText(`Signed by: ${submission.patient_first_name} ${submission.patient_last_name}`, { font: helvetica, size: 10 });
+    drawText(`Date: ${signedDate}`, { font: helvetica, size: 10 });
+    drawText(`Submission ID: ${submission.id}`, { font: helvetica, size: 9, color: rgb(0.5, 0.5, 0.5) });
 
-    page.drawText(`Generated by ClearConsent on ${new Date().toLocaleDateString()}`, {
-      x: margin,
-      y: margin,
-      size: 9,
-      font: timesRoman,
-      color: rgb(0.5, 0.5, 0.5),
-    });
+    // Footer on each page
+    const pages = pdfDoc.getPages();
+    const totalPages = pages.length;
+    for (let i = 0; i < totalPages; i++) {
+      const pg = pages[i];
+      pg.drawLine({
+        start: { x: margin, y: margin - 10 },
+        end: { x: pageWidth - margin, y: margin - 10 },
+        thickness: 0.5,
+        color: rgb(0.8, 0.8, 0.8),
+      });
+      pg.drawText("This document was electronically signed and is legally binding.", {
+        x: margin,
+        y: margin - 24,
+        size: 8,
+        font: helvetica,
+        color: rgb(0.5, 0.5, 0.5),
+      });
+      pg.drawText(`Generated by ClearConsent  •  Page ${i + 1} of ${totalPages}`, {
+        x: margin,
+        y: margin - 36,
+        size: 8,
+        font: helvetica,
+        color: rgb(0.5, 0.5, 0.5),
+      });
+    }
 
     // Save PDF
     const pdfBytes = await pdfDoc.save();
     console.log("PDF generated, size:", pdfBytes.length, "bytes");
 
     // Upload to storage
-    const uploadBody = pdfBytes.buffer.slice(
-      pdfBytes.byteOffset,
-      pdfBytes.byteOffset + pdfBytes.byteLength,
-    );
-
+    const uploadBody = pdfBytes.buffer.slice(pdfBytes.byteOffset, pdfBytes.byteOffset + pdfBytes.byteLength);
     const { error: uploadError } = await supabase.storage
       .from("consent-pdfs")
-      .upload(fileName, uploadBody, {
-        contentType: "application/pdf",
-        upsert: true,
-      });
+      .upload(fileName, uploadBody, { contentType: "application/pdf", upsert: true });
 
     if (uploadError) {
       console.error("Error uploading PDF:", uploadError);
       throw new Error("Failed to upload PDF: " + uploadError.message);
     }
-
     console.log("PDF uploaded successfully to:", fileName);
 
-    // Get signed URL for the PDF (valid for 1 year)
+    // Get signed URL
     const { data: signedUrlData, error: signedUrlError } = await supabase.storage
       .from("consent-pdfs")
       .createSignedUrl(fileName, 60 * 60 * 24 * 365);
@@ -317,28 +369,19 @@ serve(async (req) => {
     console.log("Signed URL created:", pdfUrl ? "success" : "failed");
 
     // Update submission with PDF URL
-    const { error: updateError } = await supabase
-      .from("consent_submissions")
-      .update({ pdf_url: pdfUrl })
-      .eq("id", submissionId);
-
-    if (updateError) {
-      console.error("Error updating submission with PDF URL:", updateError);
-    }
+    await supabase.from("consent_submissions").update({ pdf_url: pdfUrl }).eq("id", submissionId);
 
     console.log("PDF generated and stored successfully");
 
-    return new Response(
-      JSON.stringify({ success: true, pdfUrl }),
-      { headers: { ...corsHeaders, "Content-Type": "application/json" } }
-    );
-
+    return new Response(JSON.stringify({ success: true, pdfUrl }), {
+      headers: { ...corsHeaders, "Content-Type": "application/json" },
+    });
   } catch (error: unknown) {
     const errorMessage = error instanceof Error ? error.message : "Unknown error";
     console.error("Error generating PDF:", errorMessage);
-    return new Response(
-      JSON.stringify({ error: errorMessage }),
-      { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } }
-    );
+    return new Response(JSON.stringify({ error: errorMessage }), {
+      status: 500,
+      headers: { ...corsHeaders, "Content-Type": "application/json" },
+    });
   }
 });
