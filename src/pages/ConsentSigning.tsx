@@ -124,11 +124,29 @@ export default function ConsentSigning() {
     setIsLoading(false);
   };
 
+  const validateName = (name: string) => name.trim().length >= 2;
+  const validateDOB = (dob: string) => {
+    if (!dob) return false;
+    const date = new Date(dob);
+    const now = new Date();
+    return date < now && date.getFullYear() > 1900;
+  };
+
   const handleGuestContinue = async () => {
-    if (!firstName.trim() || !lastName.trim() || !dateOfBirth) {
-      toast.error("Please fill in all required fields");
+    if (!validateName(firstName)) {
+      toast.error("Please enter a valid first name");
       return;
     }
+    if (!validateName(lastName)) {
+      toast.error("Please enter a valid last name");
+      return;
+    }
+    if (!validateDOB(dateOfBirth)) {
+      toast.error("Please enter a valid date of birth");
+      return;
+    }
+
+    setIsSubmitting(true);
 
     // Update invite with patient info using RPC
     const { error } = await supabase.rpc("update_invite_patient_info_by_token", {
@@ -140,15 +158,25 @@ export default function ConsentSigning() {
     if (error) {
       console.error("Error updating invite:", error);
       toast.error("Failed to save your information");
+      setIsSubmitting(false);
       return;
     }
 
     setOnboardingMode("complete");
+    setIsSubmitting(false);
   };
 
   const handleAccountCreate = async () => {
-    if (!firstName.trim() || !lastName.trim() || !dateOfBirth) {
-      toast.error("Please fill in all required fields");
+    if (!validateName(firstName)) {
+      toast.error("Please enter a valid first name");
+      return;
+    }
+    if (!validateName(lastName)) {
+      toast.error("Please enter a valid last name");
+      return;
+    }
+    if (!validateDOB(dateOfBirth)) {
+      toast.error("Please enter a valid date of birth");
       return;
     }
 
@@ -396,7 +424,7 @@ export default function ConsentSigning() {
           </div>
         </header>
 
-        <main className="container py-8 max-w-lg">
+        <main className="container py-6 sm:py-8 px-4 sm:px-6 max-w-lg">
           <Button
             variant="ghost"
             size="sm"
@@ -415,8 +443,8 @@ export default function ConsentSigning() {
               : "Create an account to save your information for future visits."}
           </p>
 
-          <div className="space-y-6">
-            <div className="grid grid-cols-2 gap-4">
+          <div className="space-y-5">
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
               <div className="space-y-2">
                 <Label htmlFor="firstName">First Name *</Label>
                 <Input
@@ -424,7 +452,7 @@ export default function ConsentSigning() {
                   placeholder="Sarah"
                   value={firstName}
                   onChange={(e) => setFirstName(e.target.value)}
-                  className="input-focus-ring"
+                  className="input-focus-ring text-base"
                 />
               </div>
               <div className="space-y-2">
@@ -434,7 +462,7 @@ export default function ConsentSigning() {
                   placeholder="Johnson"
                   value={lastName}
                   onChange={(e) => setLastName(e.target.value)}
-                  className="input-focus-ring"
+                  className="input-focus-ring text-base"
                 />
               </div>
             </div>
@@ -446,7 +474,8 @@ export default function ConsentSigning() {
                 type="date"
                 value={dateOfBirth}
                 onChange={(e) => setDateOfBirth(e.target.value)}
-                className="input-focus-ring"
+                className="input-focus-ring text-base"
+                max={new Date().toISOString().split('T')[0]}
               />
             </div>
 
@@ -540,20 +569,20 @@ export default function ConsentSigning() {
         </div>
       </header>
 
-      <main className="container py-8 max-w-3xl">
-        <div className="mb-8">
-          <h1 className="text-2xl sm:text-3xl font-bold font-display mb-2">
+      <main className="container py-6 sm:py-8 px-4 sm:px-6 max-w-3xl">
+        <div className="mb-6 sm:mb-8">
+          <h1 className="text-xl sm:text-2xl md:text-3xl font-bold font-display mb-2">
             {invite?.module_name}
           </h1>
-          <p className="text-muted-foreground">
+          <p className="text-sm sm:text-base text-muted-foreground">
             Please review the information below and provide your signature.
           </p>
         </div>
 
-        <div className="space-y-6">
+        <div className="space-y-4 sm:space-y-6">
         {/* Video Section */}
           {invite?.module_video_url && (
-            <div className="card-elevated p-6">
+            <div className="card-elevated p-4 sm:p-6">
               <div className="flex items-center gap-3 mb-4">
                 <Video className="h-5 w-5 text-primary" />
                 <h2 className="font-semibold">Educational Video</h2>
@@ -617,8 +646,8 @@ export default function ConsentSigning() {
 
           {/* Description Section */}
           {invite?.module_description && (
-            <div className="card-elevated p-6">
-              <div className="flex items-center gap-3 mb-4">
+            <div className="card-elevated p-4 sm:p-6">
+              <div className="flex items-center gap-2 sm:gap-3 mb-3 sm:mb-4">
                 <FileText className="h-5 w-5 text-primary" />
                 <h2 className="font-semibold">Consent Information</h2>
               </div>
@@ -637,7 +666,7 @@ export default function ConsentSigning() {
           )}
 
           {/* Acknowledgment Section */}
-          <div className="card-elevated p-6">
+          <div className="card-elevated p-4 sm:p-6">
             <h2 className="font-semibold mb-4">Acknowledgment</h2>
             <div className="space-y-4">
               <div className="flex items-start gap-3">
@@ -664,17 +693,17 @@ export default function ConsentSigning() {
           </div>
 
           {/* Signature Section */}
-          <div className="card-elevated p-6">
+          <div className="card-elevated p-4 sm:p-6">
             <h2 className="font-semibold mb-4">Digital Signature</h2>
             <div className="space-y-4">
               <div className="space-y-2">
-                <Label htmlFor="signature">Type your full legal name as your signature</Label>
+                <Label htmlFor="signature" className="text-sm sm:text-base">Type your full legal name as your signature</Label>
                 <Input
                   id="signature"
                   placeholder="e.g., Sarah Johnson"
                   value={signature}
                   onChange={(e) => setSignature(e.target.value)}
-                  className="input-focus-ring text-lg"
+                  className="input-focus-ring text-base sm:text-lg"
                 />
               </div>
               <p className="text-xs text-muted-foreground">
