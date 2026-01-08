@@ -2,12 +2,18 @@ import { useEffect, useState } from "react";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import {
+  Tooltip,
+  TooltipContent,
+  TooltipTrigger,
+} from "@/components/ui/tooltip";
+import {
   AlertTriangle,
   Loader2,
   User,
   FileText,
   Calendar,
   MessageSquare,
+  X,
 } from "lucide-react";
 import {
   Dialog,
@@ -41,6 +47,7 @@ export function RecentWithdrawals() {
   const [withdrawals, setWithdrawals] = useState<WithdrawalWithDetails[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [selectedWithdrawal, setSelectedWithdrawal] = useState<WithdrawalWithDetails | null>(null);
+  const [isDismissed, setIsDismissed] = useState(false);
 
   useEffect(() => {
     if (user) {
@@ -102,6 +109,10 @@ export function RecentWithdrawals() {
     );
   }
 
+  if (isDismissed) {
+    return null;
+  }
+
   return (
     <>
       <div className="card-elevated">
@@ -111,11 +122,26 @@ export function RecentWithdrawals() {
               <AlertTriangle className="h-4 w-4 text-destructive" />
               <h3 className="font-semibold text-sm">Recent Withdrawals</h3>
             </div>
-            {withdrawals.length > 0 && (
-              <Badge variant="destructive" className="text-xs">
-                {withdrawals.length}
-              </Badge>
-            )}
+            <div className="flex items-center gap-2">
+              {withdrawals.length > 0 && (
+                <Badge variant="destructive" className="text-xs">
+                  {withdrawals.length}
+                </Badge>
+              )}
+              <Tooltip>
+                <TooltipTrigger asChild>
+                  <Button
+                    variant="ghost"
+                    size="icon"
+                    className="h-6 w-6"
+                    onClick={() => setIsDismissed(true)}
+                  >
+                    <X className="h-4 w-4" />
+                  </Button>
+                </TooltipTrigger>
+                <TooltipContent>Dismiss</TooltipContent>
+              </Tooltip>
+            </div>
           </div>
         </div>
 
