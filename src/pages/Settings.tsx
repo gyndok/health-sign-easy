@@ -36,22 +36,6 @@ const timezones = [
   { value: "Pacific/Honolulu", label: "Hawaii Time (HT)" },
 ];
 
-const specialties = [
-  "General Practice",
-  "Internal Medicine",
-  "Cardiology",
-  "Dermatology",
-  "Gastroenterology",
-  "Neurology",
-  "Oncology",
-  "Orthopedics",
-  "Pediatrics",
-  "Psychiatry",
-  "Radiology",
-  "Surgery",
-  "Urology",
-  "Other",
-];
 
 export default function Settings() {
   const { user, profile, isLoading: authLoading } = useAuth();
@@ -214,21 +198,12 @@ export default function Settings() {
 
             <div className="space-y-2">
               <Label htmlFor="primary_specialty">Primary Specialty</Label>
-              <Select
+              <Input
+                id="primary_specialty"
                 value={formData.primary_specialty}
-                onValueChange={(value) => handleInputChange("primary_specialty", value)}
-              >
-                <SelectTrigger>
-                  <SelectValue placeholder="Select a specialty" />
-                </SelectTrigger>
-                <SelectContent>
-                  {specialties.map((specialty) => (
-                    <SelectItem key={specialty} value={specialty}>
-                      {specialty}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
+                onChange={(e) => handleInputChange("primary_specialty", e.target.value)}
+                placeholder="e.g., Dermatology, Plastic Surgery"
+              />
             </div>
           </CardContent>
         </Card>
