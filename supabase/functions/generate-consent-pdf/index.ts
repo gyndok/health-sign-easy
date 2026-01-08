@@ -80,7 +80,7 @@ serve(async (req) => {
 
     const { data: provider } = await supabase
       .from("provider_profiles")
-      .select("full_name, practice_name")
+      .select("full_name, practice_name, timezone")
       .eq("user_id", submission.provider_id)
       .single();
 
@@ -419,6 +419,8 @@ serve(async (req) => {
       yPos -= sigBoxHeight + 12;
 
       // Signed info
+      // Use provider's timezone if available, default to UTC
+      const timezone = provider?.timezone || "UTC";
       const signedDate = new Date(submission.signed_at).toLocaleString("en-US", {
         weekday: "long",
         year: "numeric",
@@ -426,6 +428,7 @@ serve(async (req) => {
         day: "numeric",
         hour: "2-digit",
         minute: "2-digit",
+        timeZone: timezone,
         timeZoneName: "short",
       });
 
