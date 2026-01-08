@@ -144,10 +144,10 @@ serve(async (req) => {
       ensureSpace(60);
 
       // Section header bar
-      const headerHeight = 22;
+      const headerHeight = 24;
       const fontSize = 10;
-      // Calculate vertical center: baseline should be at (headerHeight - fontSize) / 2 from bottom of box
-      const textY = yPos - headerHeight + (headerHeight - fontSize) / 2 + 2;
+      // Calculate vertical center: place baseline so text appears centered (account for font ascent)
+      const textY = yPos - headerHeight + (headerHeight - fontSize) / 2;
       
       currentPage.drawRectangle({
         x: MARGIN,
