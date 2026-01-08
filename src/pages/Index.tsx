@@ -3,12 +3,13 @@ import { Button } from "@/components/ui/button";
 import { 
   Shield, 
   ArrowRight, 
-  CheckCircle2, 
   FileText, 
   Video,
   Lock,
   Clock,
   Users,
+  AlertTriangle,
+  Construction,
 } from "lucide-react";
 
 const features = [
@@ -24,8 +25,8 @@ const features = [
   },
   {
     icon: Lock,
-    title: "HIPAA Compliant",
-    description: "End-to-end encryption and secure storage meeting healthcare compliance standards.",
+    title: "Security First",
+    description: "Building toward HIPAA compliance with secure storage and encryption.",
   },
   {
     icon: Clock,
@@ -35,10 +36,10 @@ const features = [
 ];
 
 const stats = [
-  { value: "10,000+", label: "Consents Signed" },
-  { value: "500+", label: "Healthcare Providers" },
-  { value: "99.9%", label: "Uptime Guarantee" },
-  { value: "<2min", label: "Average Sign Time" },
+  { value: "MVP", label: "Development Stage" },
+  { value: "Beta", label: "Testing Phase" },
+  { value: "In Progress", label: "HIPAA Compliance" },
+  { value: "Demo Only", label: "Current Status" },
 ];
 
 export default function Index() {
@@ -64,14 +65,27 @@ export default function Index() {
         </div>
       </header>
 
+      {/* MVP Warning Banner */}
+      <section className="bg-amber-500/10 border-b border-amber-500/20">
+        <div className="container py-4">
+          <div className="flex items-center justify-center gap-3 text-amber-700 dark:text-amber-400">
+            <AlertTriangle className="h-5 w-5 flex-shrink-0" />
+            <p className="text-sm font-medium text-center">
+              <strong>MVP / Demo Only:</strong> This application is under active development and is NOT ready for production use. 
+              HIPAA compliance is in progress. Do not use with real patient data.
+            </p>
+          </div>
+        </div>
+      </section>
+
       {/* Hero Section */}
       <section className="relative overflow-hidden">
         <div className="absolute inset-0 bg-gradient-to-br from-primary/5 via-transparent to-accent/5" />
         <div className="container relative py-20 sm:py-32">
           <div className="max-w-3xl mx-auto text-center">
-            <div className="inline-flex items-center gap-2 px-4 py-2 rounded-full bg-primary/10 text-primary text-sm font-medium mb-8 animate-fade-in">
-              <CheckCircle2 className="h-4 w-4" />
-              HIPAA-Compliant Consent Management
+            <div className="inline-flex items-center gap-2 px-4 py-2 rounded-full bg-amber-500/10 text-amber-700 dark:text-amber-400 text-sm font-medium mb-8 animate-fade-in">
+              <Construction className="h-4 w-4" />
+              MVP - Demonstration Only
             </div>
             <h1 className="text-4xl sm:text-5xl lg:text-6xl font-bold font-display leading-tight mb-6 animate-slide-up">
               Streamline Patient Consent with{" "}
@@ -79,21 +93,19 @@ export default function Index() {
             </h1>
             <p className="text-lg sm:text-xl text-muted-foreground mb-10 animate-slide-up max-w-2xl mx-auto" style={{ animationDelay: "0.1s" }}>
               Create educational consent modules, send invitations via email or SMS, 
-              and track completion in real-time. All secured with enterprise-grade encryption.
+              and track completion in real-time. <strong>Currently in development—for demonstration purposes only.</strong>
             </p>
             <div className="flex flex-col sm:flex-row items-center justify-center gap-4 animate-slide-up" style={{ animationDelay: "0.2s" }}>
               <Button size="xl" asChild>
                 <Link to="/auth">
-                  Start Free Trial
+                  Explore Demo
                   <ArrowRight className="h-5 w-5 ml-2" />
                 </Link>
               </Button>
-              <Button size="xl" variant="outline" asChild>
-                <Link to="/consent/demo">
-                  View Demo
-                </Link>
-              </Button>
             </div>
+            <p className="text-xs text-muted-foreground mt-6 animate-fade-in" style={{ animationDelay: "0.3s" }}>
+              ⚠️ Working toward HIPAA compliance. Not for use with protected health information.
+            </p>
           </div>
         </div>
       </section>
@@ -148,20 +160,20 @@ export default function Index() {
       </section>
 
       {/* CTA Section */}
-      <section className="py-20 sm:py-28 bg-primary text-primary-foreground">
+      <section className="py-20 sm:py-28 bg-amber-600 text-white">
         <div className="container text-center">
           <div className="max-w-2xl mx-auto">
-            <Users className="h-12 w-12 mx-auto mb-6 opacity-80" />
+            <Construction className="h-12 w-12 mx-auto mb-6 opacity-80" />
             <h2 className="text-3xl sm:text-4xl font-bold font-display mb-4">
-              Ready to Modernize Your Consent Workflow?
+              We're Building Something Great
             </h2>
             <p className="text-lg opacity-90 mb-8">
-              Join hundreds of healthcare providers who trust ClearConsent for secure, 
-              efficient patient consent management.
+              ClearConsent is actively under development. We're working toward full HIPAA compliance 
+              and enterprise-ready features. Want to explore? Try our demo.
             </p>
             <Button size="xl" variant="secondary" asChild>
               <Link to="/auth">
-                Get Started Today
+                Explore Demo
                 <ArrowRight className="h-5 w-5 ml-2" />
               </Link>
             </Button>
@@ -180,7 +192,7 @@ export default function Index() {
               <span className="font-display text-lg font-bold">ClearConsent</span>
             </div>
             <p className="text-sm text-muted-foreground">
-              © 2025 ClearConsent. All rights reserved. HIPAA Compliant.
+              © 2025 ClearConsent. MVP - For demonstration purposes only. HIPAA compliance in progress.
             </p>
           </div>
         </div>
