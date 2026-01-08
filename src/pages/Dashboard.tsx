@@ -21,6 +21,7 @@ interface DashboardStats {
 export default function Dashboard() {
   const { user, profile, isLoading } = useAuth();
   const navigate = useNavigate();
+  const [searchQuery, setSearchQuery] = useState("");
   const [stats, setStats] = useState<DashboardStats>({
     pendingConsents: 0,
     completedToday: 0,
@@ -120,6 +121,8 @@ export default function Dashboard() {
             <Input 
               placeholder="Search patients..." 
               className="pl-9 input-focus-ring"
+              value={searchQuery}
+              onChange={(e) => setSearchQuery(e.target.value)}
             />
           </div>
         </div>
@@ -166,7 +169,7 @@ export default function Dashboard() {
         {/* Main Content */}
         <div className="grid grid-cols-1 lg:grid-cols-4 gap-6">
           <div className="lg:col-span-3">
-            <RecentSubmissionsTable />
+            <RecentSubmissionsTable searchQuery={searchQuery} />
           </div>
           <div className="lg:col-span-1 space-y-6">
             <QuickActions />
