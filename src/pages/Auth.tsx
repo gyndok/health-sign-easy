@@ -138,7 +138,7 @@ export default function Auth() {
             <span className="font-display text-3xl font-bold text-white">ClearConsent</span>
           </div>
           <h1 className="text-4xl lg:text-5xl font-bold text-white leading-tight mb-6">
-            HIPAA-Compliant<br />
+            Secure Digital<br />
             Patient Consent<br />
             Management
           </h1>
