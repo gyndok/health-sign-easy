@@ -8,7 +8,8 @@ import {
   ExternalLink,
   MoreHorizontal,
   Eye,
-  Loader2
+  Loader2,
+  XCircle
 } from "lucide-react";
 import {
   DropdownMenu,
@@ -16,6 +17,11 @@ import {
   DropdownMenuItem,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
+import {
+  Tooltip,
+  TooltipContent,
+  TooltipTrigger,
+} from "@/components/ui/tooltip";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
 import { format } from "date-fns";
@@ -30,6 +36,11 @@ interface SubmissionWithModule {
   consent_modules: {
     name: string;
   } | null;
+  consent_withdrawals: Array<{
+    id: string;
+    withdrawn_at: string;
+    reason: string | null;
+  }> | null;
 }
 
 export function RecentSubmissionsTable() {
@@ -58,6 +69,11 @@ export function RecentSubmissionsTable() {
         pdf_url,
         consent_modules (
           name
+        ),
+        consent_withdrawals (
+          id,
+          withdrawn_at,
+          reason
         )
       `)
       .eq("provider_id", user.id)
@@ -67,25 +83,19 @@ export function RecentSubmissionsTable() {
     if (error) {
       console.error("Error fetching submissions:", error);
     } else {
-      setSubmissions((data as SubmissionWithModule[]) || []);
+      setSubmissions((data as unknown as SubmissionWithModule[]) || []);
     }
     setIsLoading(false);
   };
 
   const handleDownloadPdf = async (pdfUrl: string, patientName: string) => {
     try {
-      // Extract the file path from the pdf_url
-      const { data, error } = await supabase.storage
-        .from("consent-pdfs")
-        .download(pdfUrl);
+      // The pdf_url is a signed URL, so fetch it directly
+      const response = await fetch(pdfUrl);
+      if (!response.ok) throw new Error("Failed to fetch PDF");
       
-      if (error) {
-        console.error("Error downloading PDF:", error);
-        return;
-      }
-
-      // Create download link
-      const url = URL.createObjectURL(data);
+      const blob = await response.blob();
+      const url = URL.createObjectURL(blob);
       const a = document.createElement("a");
       a.href = url;
       a.download = `consent-${patientName.replace(/\s+/g, "-")}.pdf`;
@@ -99,25 +109,16 @@ export function RecentSubmissionsTable() {
   };
 
   const handleViewPdf = async (pdfUrl: string) => {
-    try {
-      const { data, error } = await supabase.storage
-        .from("consent-pdfs")
-        .createSignedUrl(pdfUrl, 60 * 5); // 5 minute expiry
-      
-      if (error) {
-        console.error("Error getting signed URL:", error);
-        return;
-      }
-
-      window.open(data.signedUrl, "_blank");
-    } catch (err) {
-      console.error("View failed:", err);
-    }
+    // The pdf_url is already a signed URL, so open it directly
+    window.open(pdfUrl, "_blank");
   };
 
   const formatPatientName = (firstName: string, lastName: string) => {
     return `${firstName || ""} ${lastName || ""}`.trim() || "Unknown";
   };
+
+  const isWithdrawn = (submission: SubmissionWithModule) => 
+    submission.consent_withdrawals && submission.consent_withdrawals.length > 0;
 
   if (isLoading) {
     return (
@@ -195,11 +196,12 @@ export function RecentSubmissionsTable() {
                   submission.patient_last_name
                 );
                 const signedDate = format(new Date(submission.signed_at), "MMM d, yyyy h:mm a");
+                const withdrawn = isWithdrawn(submission);
                 
                 return (
                   <tr 
                     key={submission.id} 
-                    className="hover:bg-muted/30 transition-colors animate-fade-in"
+                    className={`hover:bg-muted/30 transition-colors animate-fade-in ${withdrawn ? "bg-destructive/5" : ""}`}
                     style={{ animationDelay: `${index * 50}ms` }}
                   >
                     <td className="px-6 py-4">
@@ -220,7 +222,32 @@ export function RecentSubmissionsTable() {
                       <span className="text-sm text-muted-foreground">{signedDate}</span>
                     </td>
                     <td className="px-6 py-4">
-                      <Badge variant="success">Completed</Badge>
+                      {withdrawn ? (
+                        <Tooltip>
+                          <TooltipTrigger>
+                            <Badge variant="destructive" className="cursor-help">
+                              <XCircle className="h-3 w-3 mr-1" />
+                              Withdrawn
+                            </Badge>
+                          </TooltipTrigger>
+                          <TooltipContent>
+                            <p>
+                              Withdrawn on{" "}
+                              {format(
+                                new Date(submission.consent_withdrawals![0].withdrawn_at),
+                                "MMM d, yyyy"
+                              )}
+                            </p>
+                            {submission.consent_withdrawals![0].reason && (
+                              <p className="text-xs mt-1">
+                                Reason: {submission.consent_withdrawals![0].reason}
+                              </p>
+                            )}
+                          </TooltipContent>
+                        </Tooltip>
+                      ) : (
+                        <Badge variant="success">Completed</Badge>
+                      )}
                     </td>
                     <td className="px-6 py-4 text-right">
                       <DropdownMenu>
@@ -229,7 +256,7 @@ export function RecentSubmissionsTable() {
                             <MoreHorizontal className="h-4 w-4" />
                           </Button>
                         </DropdownMenuTrigger>
-                        <DropdownMenuContent align="end">
+                        <DropdownMenuContent align="end" className="bg-popover">
                           {submission.pdf_url && (
                             <>
                               <DropdownMenuItem 
