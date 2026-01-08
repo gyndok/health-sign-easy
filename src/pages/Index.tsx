@@ -167,9 +167,12 @@ export default function Index() {
             <h2 className="text-3xl sm:text-4xl font-bold font-display mb-4">
               We're Building Something Great
             </h2>
-            <p className="text-lg opacity-90 mb-8">
+            <p className="text-lg opacity-90 mb-6">
               ClearConsent is actively under development. We're working toward full HIPAA compliance 
               and enterprise-ready features. Want to explore? Try our demo.
+            </p>
+            <p className="text-sm opacity-80 mb-8">
+              For more information, contact: <a href="mailto:gyndok@yahoo.com" className="underline hover:opacity-100">gyndok@yahoo.com</a>
             </p>
             <Button size="xl" variant="secondary" asChild>
               <Link to="/auth">
