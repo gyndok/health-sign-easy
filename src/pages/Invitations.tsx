@@ -197,14 +197,6 @@ export default function Invitations() {
       return;
     }
 
-    // Open a tab immediately (otherwise browsers may block it as a popup)
-    const pdfTab = window.open("about:blank", "_blank");
-    if (!pdfTab) {
-      toast.error("Popup blocked — please allow popups to open the PDF");
-      return;
-    }
-    pdfTab.opener = null;
-
     const toastId = regenerate ? "pdf-regen" : "pdf-download";
     toast.loading(regenerate ? "Regenerating PDF..." : "Preparing PDF...", { id: toastId });
 
@@ -214,41 +206,34 @@ export default function Invitations() {
 
     if (error || !data?.pdfUrl) {
       console.error("PDF error:", error);
-      toast.error("Failed to open PDF", { id: toastId });
-      try {
-        pdfTab.close();
-      } catch {
-        // ignore
-      }
+      toast.error("Failed to prepare PDF", { id: toastId });
       return;
     }
 
-    toast.success("Opening PDF...", { id: toastId });
+    // Prefer a real file download (avoids blank PDF tabs / viewer issues)
+    const fileName = `${invite.created_by}/${submissionId}.pdf`;
+    const { data: fileBlob, error: downloadError } = await supabase.storage
+      .from("consent-pdfs")
+      .download(fileName);
 
-    const pdfUrl: string = data.pdfUrl;
-
-    try {
-      // In some preview/sandboxed environments the popup opens but won't navigate,
-      // so we render a tiny redirect page with a visible link as fallback.
-      const html = `<!doctype html><html><head><meta charset="utf-8" />
-<title>Opening PDF…</title></head>
-<body style="font-family: system-ui, -apple-system, Segoe UI, Roboto, Arial, sans-serif; padding: 24px;">
-  <p>Opening your PDF… If it doesn’t open automatically, <a id="pdf-link" href="#">click here</a>.</p>
-  <script>
-    const url = ${JSON.stringify(pdfUrl)};
-    const a = document.getElementById('pdf-link');
-    if (a) a.setAttribute('href', url);
-    setTimeout(() => window.location.replace(url), 0);
-  </script>
-</body></html>`;
-
-      pdfTab.document.open();
-      pdfTab.document.write(html);
-      pdfTab.document.close();
-    } catch (e) {
-      console.warn("Could not navigate popup to PDF, falling back to same-tab navigation", e);
-      window.location.href = pdfUrl;
+    if (downloadError || !fileBlob) {
+      console.warn("Could not download PDF via storage API, falling back to signed URL", downloadError);
+      toast.success("Opening PDF...", { id: toastId });
+      window.open(data.pdfUrl, "_blank", "noopener,noreferrer");
+      fetchInvitations();
+      return;
     }
+
+    const objectUrl = URL.createObjectURL(fileBlob);
+    const a = document.createElement("a");
+    a.href = objectUrl;
+    a.download = `consent-${submissionId}.pdf`;
+    document.body.appendChild(a);
+    a.click();
+    a.remove();
+    URL.revokeObjectURL(objectUrl);
+
+    toast.success("PDF download started", { id: toastId });
 
     // Keep list fresh (pdf_url may update)
     fetchInvitations();
