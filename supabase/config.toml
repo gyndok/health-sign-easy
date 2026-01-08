@@ -5,3 +5,6 @@ verify_jwt = false
 
 [functions.generate-consent-pdf]
 verify_jwt = false
+
+[functions.generate-consent-text]
+verify_jwt = false
