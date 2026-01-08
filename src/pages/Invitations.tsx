@@ -228,7 +228,11 @@ export default function Invitations() {
     const objectUrl = URL.createObjectURL(fileBlob);
     const a = document.createElement("a");
     a.href = objectUrl;
-    a.download = `consent-${submissionId}.pdf`;
+
+    // Use a unique filename to avoid the OS/browser re-opening an older cached download
+    const stamp = new Date().toISOString().replace(/[:.]/g, "-");
+    a.download = `consent-${submissionId}-${stamp}.pdf`;
+
     document.body.appendChild(a);
     a.click();
     a.remove();
