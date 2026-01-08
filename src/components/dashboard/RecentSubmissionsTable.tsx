@@ -46,7 +46,11 @@ interface SubmissionWithModule {
   consent_withdrawals: ConsentWithdrawal | ConsentWithdrawal[] | null;
 }
 
-export function RecentSubmissionsTable() {
+interface RecentSubmissionsTableProps {
+  searchQuery?: string;
+}
+
+export function RecentSubmissionsTable({ searchQuery = "" }: RecentSubmissionsTableProps) {
   const { user } = useAuth();
   const [submissions, setSubmissions] = useState<SubmissionWithModule[]>([]);
   const [isLoading, setIsLoading] = useState(true);
@@ -128,6 +132,16 @@ export function RecentSubmissionsTable() {
 
   const isWithdrawn = (submission: SubmissionWithModule) => !!getWithdrawal(submission);
 
+  const filteredSubmissions = submissions.filter((submission) => {
+    if (!searchQuery.trim()) return true;
+    const query = searchQuery.toLowerCase();
+    const fullName = `${submission.patient_first_name} ${submission.patient_last_name}`.toLowerCase();
+    return (
+      fullName.includes(query) ||
+      submission.patient_email.toLowerCase().includes(query)
+    );
+  });
+
   if (isLoading) {
     return (
       <div className="card-elevated overflow-hidden">
@@ -167,12 +181,14 @@ export function RecentSubmissionsTable() {
         </div>
       </div>
       
-      {submissions.length === 0 ? (
+      {filteredSubmissions.length === 0 ? (
         <div className="flex flex-col items-center justify-center py-12 text-center">
           <FileText className="h-10 w-10 text-muted-foreground/50 mb-3" />
-          <p className="text-sm text-muted-foreground">No consent submissions yet</p>
+          <p className="text-sm text-muted-foreground">
+            {searchQuery ? "No matching patients found" : "No consent submissions yet"}
+          </p>
           <p className="text-xs text-muted-foreground mt-1">
-            Submissions will appear here once patients sign their consent forms
+            {searchQuery ? "Try a different search term" : "Submissions will appear here once patients sign their consent forms"}
           </p>
         </div>
       ) : (
@@ -198,7 +214,7 @@ export function RecentSubmissionsTable() {
               </tr>
             </thead>
             <tbody className="divide-y divide-border">
-              {submissions.map((submission, index) => {
+              {filteredSubmissions.map((submission, index) => {
                 const patientName = formatPatientName(
                   submission.patient_first_name,
                   submission.patient_last_name
