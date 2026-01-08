@@ -146,9 +146,10 @@ serve(async (req) => {
       // Section header bar
       const headerHeight = 24;
       const fontSize = 10;
-      // Calculate vertical center: place baseline so text appears centered (account for font ascent)
-      const textY = yPos - headerHeight + (headerHeight - fontSize) / 2;
-      
+      const headerFontHeight = helveticaBold.heightAtSize(fontSize);
+      // Center text visually inside the header bar (baseline positioning)
+      const textY = yPos - headerHeight + (headerHeight - headerFontHeight) / 2;
+
       currentPage.drawRectangle({
         x: MARGIN,
         y: yPos - headerHeight,
@@ -170,11 +171,13 @@ serve(async (req) => {
       contentFn();
       const endY = yPos;
 
-      // Box around content
-      const boxHeight = startY - endY + 12;
+      // Box around content (add more top padding so the border doesn't cut through large text)
+      const paddingTop = 16;
+      const paddingBottom = 10;
+      const boxHeight = startY - endY + paddingTop + paddingBottom;
       currentPage.drawRectangle({
         x: MARGIN,
-        y: endY - 6,
+        y: endY - paddingBottom,
         width: CONTENT_WIDTH,
         height: boxHeight,
         borderColor: COLORS.border,
