@@ -1,73 +1,72 @@
-# Welcome to your Lovable project
+# ClearConsent
 
-## Project info
+**Website:** [clearconsent.net](https://clearconsent.net)
 
-**URL**: https://lovable.dev/projects/REPLACE_WITH_PROJECT_ID
+A secure digital platform for managing patient consent in healthcare settings. ClearConsent streamlines the informed consent process by enabling providers to create, send, and track consent forms digitally.
 
-## How can I edit this code?
+## Features
 
-There are several ways of editing your application.
+### For Healthcare Providers
+- **AI-Powered Consent Generation** – Generate comprehensive consent text for procedures using AI, then review and customize as needed
+- **Module Management** – Create reusable consent modules for different procedures with video support
+- **Patient Invitations** – Send secure consent invitations via email with customizable messages
+- **Dashboard Analytics** – Track consent submissions, pending invitations, and recent activity
+- **Patient Management** – View and manage all patients and their consent history
 
-**Use Lovable**
+### For Patients
+- **Digital Signing** – Review and sign consent forms from any device
+- **Consent History** – Access all signed consents in one place
+- **Withdrawal Support** – Withdraw consent when needed with documented reasoning
+- **Notification Preferences** – Control email notifications for reminders and updates
 
-Simply visit the [Lovable Project](https://lovable.dev/projects/REPLACE_WITH_PROJECT_ID) and start prompting.
+## Tech Stack
 
-Changes made via Lovable will be committed automatically to this repo.
+- **Frontend:** React, TypeScript, Vite, Tailwind CSS, shadcn/ui
+- **Backend:** Lovable Cloud (Supabase)
+- **Authentication:** Email-based authentication with role separation (provider/patient)
+- **AI Integration:** Lovable AI for consent text generation
 
-**Use your preferred IDE**
+## Getting Started
 
-If you want to work locally using your own IDE, you can clone this repo and push changes. Pushed changes will also be reflected in Lovable.
-
-The only requirement is having Node.js & npm installed - [install with nvm](https://github.com/nvm-sh/nvm#installing-and-updating)
-
-Follow these steps:
+### Development
 
 ```sh
-# Step 1: Clone the repository using the project's Git URL.
+# Clone the repository
 git clone <YOUR_GIT_URL>
 
-# Step 2: Navigate to the project directory.
+# Navigate to the project directory
 cd <YOUR_PROJECT_NAME>
 
-# Step 3: Install the necessary dependencies.
-npm i
+# Install dependencies
+npm install
 
-# Step 4: Start the development server with auto-reloading and an instant preview.
+# Start the development server
 npm run dev
 ```
 
-**Edit a file directly in GitHub**
+### Environment
 
-- Navigate to the desired file(s).
-- Click the "Edit" button (pencil icon) at the top right of the file view.
-- Make your changes and commit the changes.
+This project uses Lovable Cloud for backend services. Environment variables are automatically configured when connected to Lovable.
 
-**Use GitHub Codespaces**
+## Project Structure
 
-- Navigate to the main page of your repository.
-- Click on the "Code" button (green button) near the top right.
-- Select the "Codespaces" tab.
-- Click on "New codespace" to launch a new Codespace environment.
-- Edit files directly within the Codespace and commit and push your changes once you're done.
+```
+src/
+├── components/       # Reusable UI components
+│   ├── dashboard/    # Provider dashboard components
+│   ├── layout/       # Navigation and layout components
+│   └── ui/           # shadcn/ui components
+├── hooks/            # Custom React hooks
+├── pages/            # Route pages
+└── integrations/     # Backend integrations
 
-## What technologies are used for this project?
+supabase/
+└── functions/        # Backend edge functions
+    ├── generate-consent-text/   # AI consent generation
+    ├── generate-consent-pdf/    # PDF generation
+    └── send-invite-email/       # Email invitations
+```
 
-This project is built with:
+## License
 
-- Vite
-- TypeScript
-- React
-- shadcn-ui
-- Tailwind CSS
-
-## How can I deploy this project?
-
-Simply open [Lovable](https://lovable.dev/projects/REPLACE_WITH_PROJECT_ID) and click on Share -> Publish.
-
-## Can I connect a custom domain to my Lovable project?
-
-Yes, you can!
-
-To connect a domain, navigate to Project > Settings > Domains and click Connect Domain.
-
-Read more here: [Setting up a custom domain](https://docs.lovable.dev/features/custom-domain#custom-domain)
+Proprietary – All rights reserved.
