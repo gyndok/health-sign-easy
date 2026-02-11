@@ -82,11 +82,37 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   };
 
   useEffect(() => {
+    const logAuditEvent = async (action: string, userId: string, details?: Record<string, string | undefined>) => {
+      try {
+        await supabase.from("audit_logs").insert([{
+          user_id: userId,
+          action,
+          table_name: "auth",
+          details: (details || {}) as any,
+        }]);
+      } catch (err) {
+        console.error("Failed to log audit event:", err);
+      }
+    };
+
     // Set up auth state listener FIRST
     const { data: { subscription } } = supabase.auth.onAuthStateChange(
       (event, session) => {
         setSession(session);
         setUser(session?.user ?? null);
+
+        // Log auth events
+        if (event === "SIGNED_IN" && session?.user) {
+          setTimeout(() => {
+            logAuditEvent("user_login", session.user.id, { email: session.user.email });
+          }, 0);
+        } else if (event === "SIGNED_OUT") {
+          // Use previous user ref since session is now null
+        } else if (event === "USER_UPDATED" && session?.user) {
+          setTimeout(() => {
+            logAuditEvent("user_updated", session.user.id, { email: session.user.email });
+          }, 0);
+        }
 
         // Defer profile fetching with setTimeout to prevent deadlock
         if (session?.user) {
@@ -143,6 +169,19 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   };
 
   const signOut = async () => {
+    // Log logout before clearing session
+    if (user) {
+      try {
+        await supabase.from("audit_logs").insert([{
+          user_id: user.id,
+          action: "user_logout",
+          table_name: "auth",
+          details: { email: user.email } as any,
+        }]);
+      } catch (err) {
+        console.error("Failed to log logout:", err);
+      }
+    }
     await supabase.auth.signOut();
     setProfile(null);
     setRole(null);
