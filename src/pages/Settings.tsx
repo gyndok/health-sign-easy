@@ -10,6 +10,7 @@ import { useAuth } from "@/hooks/useAuth";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 import { Loader2, Save, User, Building, Phone, Mail, Clock } from "lucide-react";
+import { MFASettings } from "@/components/auth/MFASettings";
 import {
   Select,
   SelectContent,
@@ -240,6 +241,9 @@ export default function Settings() {
             </div>
           </CardContent>
         </Card>
+
+        {/* MFA Settings */}
+        <MFASettings />
 
         {/* Save Button */}
         <div className="flex justify-end">
