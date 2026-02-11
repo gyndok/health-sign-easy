@@ -19,6 +19,7 @@ import Settings from "./pages/Settings";
 import Patients from "./pages/Patients";
 import PrivacyPolicy from "./pages/PrivacyPolicy";
 import TermsOfService from "./pages/TermsOfService";
+import AuditLog from "./pages/AuditLog";
 import NotFound from "./pages/NotFound";
 
 function SessionTimeoutWrapper({ children }: { children: React.ReactNode }) {
@@ -50,6 +51,7 @@ const App = () => (
               <Route path="/consent/:token" element={<ConsentSigning />} />
               <Route path="/settings" element={<Settings />} />
               <Route path="/patients" element={<Patients />} />
+              <Route path="/audit-log" element={<AuditLog />} />
               <Route path="/privacy" element={<PrivacyPolicy />} />
               <Route path="/terms" element={<TermsOfService />} />
               {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
