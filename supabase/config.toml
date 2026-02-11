@@ -8,3 +8,6 @@ verify_jwt = false
 
 [functions.generate-consent-text]
 verify_jwt = false
+
+[functions.send-expiration-reminders]
+verify_jwt = false

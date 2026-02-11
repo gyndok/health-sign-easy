@@ -186,6 +186,7 @@ export type Database = {
           patient_last_name: string | null
           patient_phone: string | null
           patient_user_id: string | null
+          reminder_sent_at: string | null
           status: Database["public"]["Enums"]["invite_status"]
           token: string
           viewed_at: string | null
@@ -203,6 +204,7 @@ export type Database = {
           patient_last_name?: string | null
           patient_phone?: string | null
           patient_user_id?: string | null
+          reminder_sent_at?: string | null
           status?: Database["public"]["Enums"]["invite_status"]
           token?: string
           viewed_at?: string | null
@@ -220,6 +222,7 @@ export type Database = {
           patient_last_name?: string | null
           patient_phone?: string | null
           patient_user_id?: string | null
+          reminder_sent_at?: string | null
           status?: Database["public"]["Enums"]["invite_status"]
           token?: string
           viewed_at?: string | null
