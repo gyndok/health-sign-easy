@@ -347,7 +347,7 @@ export default function ConsentSigning() {
   const currentStep = getCurrentStep();
 
   const renderStepIndicator = () => (
-    <div className="flex items-center justify-center gap-2 mb-8">
+    <div className="flex items-center justify-center gap-1 sm:gap-2 mb-6 sm:mb-8 px-2">
       {[
         { num: 1, label: "Verify" },
         { num: 2, label: "Review" },
@@ -356,10 +356,10 @@ export default function ConsentSigning() {
         const isActive = step.num === currentStep;
         const isCompleted = step.num < currentStep;
         return (
-          <div key={step.num} className="flex items-center gap-2">
-            {i > 0 && <div className={`h-0.5 w-8 ${isCompleted ? "bg-primary" : "bg-border"}`} />}
+          <div key={step.num} className="flex items-center gap-1 sm:gap-2">
+            {i > 0 && <div className={`h-0.5 w-6 sm:w-8 ${isCompleted ? "bg-primary" : "bg-border"}`} />}
             <div className="flex flex-col items-center gap-1">
-              <div className={`h-8 w-8 rounded-full flex items-center justify-center text-sm font-medium ${
+              <div className={`h-9 w-9 sm:h-8 sm:w-8 rounded-full flex items-center justify-center text-sm font-medium ${
                 isActive || isCompleted ? "bg-primary text-primary-foreground" : "bg-muted text-muted-foreground"
               }`}>
                 {isCompleted ? "\u2713" : step.num}
@@ -482,10 +482,10 @@ export default function ConsentSigning() {
             </p>
           </div>
 
-          <div className="grid gap-4 sm:grid-cols-3">
+          <div className="grid gap-3 sm:gap-4 sm:grid-cols-3">
             <button
               onClick={() => setOnboardingMode("guest")}
-              className="card-interactive p-5 text-left hover:border-primary transition-colors"
+              className="card-interactive p-5 sm:p-5 text-left hover:border-primary transition-colors active:scale-[0.98] min-h-[5rem]"
             >
               <UserCheck className="h-7 w-7 text-primary mb-3" />
               <h3 className="font-semibold mb-1.5 text-sm">Continue as Guest</h3>
@@ -499,7 +499,7 @@ export default function ConsentSigning() {
                 setLoginEmail(invite?.patient_email || "");
                 setOnboardingMode("login");
               }}
-              className="card-interactive p-5 text-left hover:border-primary transition-colors"
+              className="card-interactive p-5 sm:p-5 text-left hover:border-primary transition-colors active:scale-[0.98] min-h-[5rem]"
             >
               <LogIn className="h-7 w-7 text-primary mb-3" />
               <h3 className="font-semibold mb-1.5 text-sm">Sign In</h3>
@@ -510,7 +510,7 @@ export default function ConsentSigning() {
 
             <button
               onClick={() => setOnboardingMode("account")}
-              className="card-interactive p-5 text-left hover:border-primary transition-colors"
+              className="card-interactive p-5 sm:p-5 text-left hover:border-primary transition-colors active:scale-[0.98] min-h-[5rem]"
             >
               <UserPlus className="h-7 w-7 text-primary mb-3" />
               <h3 className="font-semibold mb-1.5 text-sm">Create Account</h3>
@@ -590,7 +590,7 @@ export default function ConsentSigning() {
 
             <Button
               onClick={handleLogin}
-              className="w-full"
+              className="w-full h-12 text-base"
               disabled={isSubmitting}
             >
               {isSubmitting ? (
@@ -748,7 +748,7 @@ export default function ConsentSigning() {
 
             <Button
               onClick={onboardingMode === "guest" ? handleGuestContinue : handleAccountCreate}
-              className="w-full"
+              className="w-full h-12 text-base"
               disabled={isSubmitting}
             >
               {isSubmitting ? (
@@ -843,16 +843,20 @@ export default function ConsentSigning() {
                   );
                 })()}
               </div>
-              <div className="flex items-center gap-2">
+              <label
+                htmlFor="videoWatched"
+                className="flex items-center gap-3 p-3 -mx-1 rounded-lg cursor-pointer hover:bg-muted/50 active:bg-muted transition-colors"
+              >
                 <Checkbox
                   id="videoWatched"
                   checked={videoWatched}
                   onCheckedChange={(checked) => setVideoWatched(checked === true)}
+                  className="h-5 w-5"
                 />
-                <Label htmlFor="videoWatched" className="text-sm cursor-pointer">
+                <span className="text-sm select-none">
                   I have watched and understood the educational video
-                </Label>
-              </div>
+                </span>
+              </label>
             </div>
           )}
 
@@ -880,27 +884,35 @@ export default function ConsentSigning() {
           {/* Acknowledgment Section */}
           <div className="card-elevated p-4 sm:p-6">
             <h2 className="font-semibold mb-4">Acknowledgment</h2>
-            <div className="space-y-4">
-              <div className="flex items-start gap-3">
+            <div className="space-y-3">
+              <label
+                htmlFor="materialsReviewed"
+                className="flex items-start gap-3 p-3 -mx-1 rounded-lg cursor-pointer hover:bg-muted/50 active:bg-muted transition-colors"
+              >
                 <Checkbox
                   id="materialsReviewed"
                   checked={materialsReviewed}
                   onCheckedChange={(checked) => setMaterialsReviewed(checked === true)}
+                  className="mt-0.5 h-5 w-5"
                 />
-                <Label htmlFor="materialsReviewed" className="text-sm cursor-pointer leading-relaxed">
+                <span className="text-sm leading-relaxed select-none">
                   I have reviewed all the consent materials and understand the information provided.
-                </Label>
-              </div>
-              <div className="flex items-start gap-3">
+                </span>
+              </label>
+              <label
+                htmlFor="agreementChecked"
+                className="flex items-start gap-3 p-3 -mx-1 rounded-lg cursor-pointer hover:bg-muted/50 active:bg-muted transition-colors"
+              >
                 <Checkbox
                   id="agreementChecked"
                   checked={agreementChecked}
                   onCheckedChange={(checked) => setAgreementChecked(checked === true)}
+                  className="mt-0.5 h-5 w-5"
                 />
-                <Label htmlFor="agreementChecked" className="text-sm cursor-pointer leading-relaxed">
+                <span className="text-sm leading-relaxed select-none">
                   I voluntarily agree to the procedure/treatment described and understand the risks, benefits, and alternatives.
-                </Label>
-              </div>
+                </span>
+              </label>
             </div>
           </div>
 
@@ -930,29 +942,31 @@ export default function ConsentSigning() {
             </div>
           </div>
 
-          {/* Submit Button */}
+          <p className="text-xs text-center text-muted-foreground">
+            Date: {currentDate}
+          </p>
+        </div>
+
+        {/* Sticky bottom submit bar on mobile */}
+        <div className="sticky bottom-0 left-0 right-0 bg-background/95 backdrop-blur border-t border-border p-4 sm:p-6 -mx-4 sm:-mx-6 mt-4">
           <Button
             onClick={handleSubmit}
             disabled={!canSubmit || isSubmitting}
             size="lg"
-            className="w-full"
+            className="w-full h-12 sm:h-11 text-base"
           >
             {isSubmitting ? (
               <>
-                <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                <Loader2 className="h-5 w-5 mr-2 animate-spin" />
                 Submitting...
               </>
             ) : (
               <>
-                <CheckCircle2 className="h-4 w-4 mr-2" />
+                <CheckCircle2 className="h-5 w-5 mr-2" />
                 Submit Signed Consent
               </>
             )}
           </Button>
-
-          <p className="text-xs text-center text-muted-foreground">
-            Date: {currentDate}
-          </p>
         </div>
       </main>
     </div>
