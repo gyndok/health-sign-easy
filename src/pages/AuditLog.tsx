@@ -19,7 +19,8 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { Loader2, Search, ClipboardList, RefreshCw } from "lucide-react";
+import { Loader2, Search, ClipboardList, RefreshCw, Download } from "lucide-react";
+import { toast } from "sonner";
 import { useAuth } from "@/hooks/useAuth";
 import { supabase } from "@/integrations/supabase/client";
 import { format } from "date-fns";
@@ -88,6 +89,43 @@ export default function AuditLog() {
 
   const uniqueActions = [...new Set(logs.map((l) => l.action))];
 
+  const exportCSV = () => {
+    if (filteredLogs.length === 0) {
+      toast.error("No logs to export");
+      return;
+    }
+
+    const headers = ["Timestamp", "Action", "Resource", "Record ID", "Details"];
+    const rows = filteredLogs.map((log) => [
+      format(new Date(log.created_at), "yyyy-MM-dd HH:mm:ss"),
+      ACTION_LABELS[log.action]?.label || log.action,
+      log.table_name,
+      log.record_id || "",
+      log.details && typeof log.details === "object"
+        ? Object.entries(log.details)
+            .filter(([, v]) => v != null)
+            .map(([k, v]) => `${k}: ${v}`)
+            .join("; ")
+        : "",
+    ]);
+
+    const csvContent = [
+      headers.join(","),
+      ...rows.map((row) =>
+        row.map((cell) => `"${String(cell).replace(/"/g, '""')}"`).join(",")
+      ),
+    ].join("\n");
+
+    const blob = new Blob([csvContent], { type: "text/csv;charset=utf-8;" });
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement("a");
+    link.href = url;
+    link.download = `clearconsent-audit-log-${format(new Date(), "yyyy-MM-dd")}.csv`;
+    link.click();
+    URL.revokeObjectURL(url);
+    toast.success(`Exported ${filteredLogs.length} log entries`);
+  };
+
   if (authLoading) {
     return (
       <ProviderLayout>
@@ -111,10 +149,16 @@ export default function AuditLog() {
               Immutable record of all actions on patient data — HIPAA compliance trail
             </p>
           </div>
-          <Button variant="outline" size="sm" onClick={fetchLogs} disabled={isLoading}>
-            <RefreshCw className={`h-4 w-4 mr-2 ${isLoading ? "animate-spin" : ""}`} />
-            Refresh
-          </Button>
+          <div className="flex items-center gap-2">
+            <Button variant="outline" size="sm" onClick={exportCSV} disabled={filteredLogs.length === 0}>
+              <Download className="h-4 w-4 mr-2" />
+              Export CSV
+            </Button>
+            <Button variant="outline" size="sm" onClick={fetchLogs} disabled={isLoading}>
+              <RefreshCw className={`h-4 w-4 mr-2 ${isLoading ? "animate-spin" : ""}`} />
+              Refresh
+            </Button>
+          </div>
         </div>
 
         {/* Filters */}
