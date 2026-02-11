@@ -10,6 +10,7 @@ import {
   Menu,
   X,
   Shield,
+  Users,
 } from "lucide-react";
 import { useState } from "react";
 import { useAuth } from "@/hooks/useAuth";
@@ -25,6 +26,7 @@ const navItems: NavItem[] = [
   { label: "Dashboard", href: "/dashboard", icon: LayoutDashboard },
   { label: "Modules", href: "/modules", icon: FileText },
   { label: "Invitations", href: "/invitations", icon: Send },
+  { label: "Patients", href: "/patients", icon: Users },
   { label: "Settings", href: "/settings", icon: Settings },
 ];
 

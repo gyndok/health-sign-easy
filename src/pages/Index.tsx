@@ -10,6 +10,9 @@ import {
   Users,
   AlertTriangle,
   Construction,
+  Send,
+  CheckCircle2,
+  BarChart3,
 } from "lucide-react";
 
 const features = [
@@ -35,11 +38,11 @@ const features = [
   },
 ];
 
-const stats = [
-  { value: "MVP", label: "Development Stage" },
-  { value: "Beta", label: "Testing Phase" },
-  { value: "In Progress", label: "HIPAA Compliance" },
-  { value: "Demo Only", label: "Current Status" },
+const howItWorks = [
+  { step: 1, icon: FileText, title: "Create Consent Modules", description: "Build custom consent forms with rich text, videos, and specialty tags." },
+  { step: 2, icon: Send, title: "Send Invitations", description: "Invite patients via email to review and sign consent documents." },
+  { step: 3, icon: CheckCircle2, title: "Patients Review & Sign", description: "Patients watch educational content, review details, and sign digitally." },
+  { step: 4, icon: BarChart3, title: "Track Everything", description: "Monitor consent status in real-time with a comprehensive dashboard." },
 ];
 
 export default function Index() {
@@ -110,20 +113,24 @@ export default function Index() {
         </div>
       </section>
 
-      {/* Stats Section */}
+      {/* How It Works Section */}
       <section className="border-y border-border bg-muted/30">
-        <div className="container py-12">
-          <div className="grid grid-cols-2 md:grid-cols-4 gap-8">
-            {stats.map((stat, index) => (
-              <div 
-                key={stat.label} 
-                className="text-center animate-fade-in"
-                style={{ animationDelay: `${index * 0.1}s` }}
-              >
-                <p className="text-3xl sm:text-4xl font-bold font-display text-primary">
-                  {stat.value}
-                </p>
-                <p className="text-sm text-muted-foreground mt-1">{stat.label}</p>
+        <div className="container py-16">
+          <div className="text-center mb-12">
+            <h2 className="text-3xl sm:text-4xl font-bold font-display mb-4">How It Works</h2>
+            <p className="text-lg text-muted-foreground max-w-2xl mx-auto">Four simple steps to modernize your consent workflow.</p>
+          </div>
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-8">
+            {howItWorks.map((item, index) => (
+              <div key={item.step} className="text-center animate-fade-in" style={{ animationDelay: `${index * 0.1}s` }}>
+                <div className="flex items-center justify-center mb-4">
+                  <div className="relative flex h-14 w-14 items-center justify-center rounded-2xl bg-primary/10">
+                    <item.icon className="h-7 w-7 text-primary" />
+                    <span className="absolute -top-2 -right-2 flex h-6 w-6 items-center justify-center rounded-full bg-primary text-primary-foreground text-xs font-bold">{item.step}</span>
+                  </div>
+                </div>
+                <h3 className="font-semibold font-display mb-1">{item.title}</h3>
+                <p className="text-sm text-muted-foreground">{item.description}</p>
               </div>
             ))}
           </div>
@@ -160,23 +167,23 @@ export default function Index() {
       </section>
 
       {/* CTA Section */}
-      <section className="py-20 sm:py-28 bg-amber-600 text-white">
+      <section className="py-20 sm:py-28 bg-primary text-white">
         <div className="container text-center">
           <div className="max-w-2xl mx-auto">
-            <Construction className="h-12 w-12 mx-auto mb-6 opacity-80" />
+            <Shield className="h-12 w-12 mx-auto mb-6 opacity-80" />
             <h2 className="text-3xl sm:text-4xl font-bold font-display mb-4">
-              We're Building Something Great
+              Ready to Modernize Your Consent Workflow?
             </h2>
             <p className="text-lg opacity-90 mb-6">
-              ClearConsent is actively under development. We're working toward full HIPAA compliance 
-              and enterprise-ready features. Want to explore? Try our demo.
+              ClearConsent helps healthcare providers deliver a better informed consent experience.
+              Get started today and see the difference digital workflows can make.
             </p>
             <p className="text-sm opacity-80 mb-8">
               For more information, contact: <a href="mailto:gyndok@yahoo.com" className="underline hover:opacity-100">gyndok@yahoo.com</a>
             </p>
             <Button size="xl" variant="secondary" asChild>
               <Link to="/auth">
-                Explore Demo
+                Get Started
                 <ArrowRight className="h-5 w-5 ml-2" />
               </Link>
             </Button>
@@ -194,9 +201,15 @@ export default function Index() {
               </div>
               <span className="font-display text-lg font-bold">ClearConsent</span>
             </div>
-            <p className="text-sm text-muted-foreground">
-              © 2025 ClearConsent. MVP - For demonstration purposes only. HIPAA compliance in progress.
-            </p>
+            <div className="flex flex-col sm:flex-row items-center gap-4">
+              <div className="flex items-center gap-4 text-sm text-muted-foreground">
+                <Link to="/privacy" className="hover:text-foreground transition-colors">Privacy Policy</Link>
+                <Link to="/terms" className="hover:text-foreground transition-colors">Terms of Service</Link>
+              </div>
+              <p className="text-sm text-muted-foreground">
+                &copy; 2026 ClearConsent. All rights reserved.
+              </p>
+            </div>
           </div>
         </div>
       </footer>

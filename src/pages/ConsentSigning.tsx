@@ -185,8 +185,12 @@ export default function ConsentSigning() {
       return;
     }
 
-    if (password.length < 6) {
-      toast.error("Password must be at least 6 characters");
+    if (password.length < 12) {
+      toast.error("Password must be at least 12 characters");
+      return;
+    }
+    if (!/[A-Z]/.test(password) || !/[a-z]/.test(password) || !/[0-9]/.test(password) || !/[^A-Za-z0-9]/.test(password)) {
+      toast.error("Password must contain uppercase, lowercase, number, and special character");
       return;
     }
 
@@ -324,11 +328,51 @@ export default function ConsentSigning() {
     setIsSubmitting(false);
   };
 
-  const canSubmit = 
-    (invite?.module_video_url ? videoWatched : true) && 
-    materialsReviewed && 
-    agreementChecked && 
+  const canSubmit =
+    (invite?.module_video_url ? videoWatched : true) &&
+    materialsReviewed &&
+    agreementChecked &&
     signature.trim().length > 0;
+
+  const allCheckboxesChecked =
+    (invite?.module_video_url ? videoWatched : true) &&
+    materialsReviewed &&
+    agreementChecked;
+
+  const getCurrentStep = (): number => {
+    if (isComplete) return 4;
+    if (onboardingMode === "complete") return allCheckboxesChecked ? 3 : 2;
+    return 1;
+  };
+  const currentStep = getCurrentStep();
+
+  const renderStepIndicator = () => (
+    <div className="flex items-center justify-center gap-2 mb-8">
+      {[
+        { num: 1, label: "Verify" },
+        { num: 2, label: "Review" },
+        { num: 3, label: "Sign" },
+      ].map((step, i) => {
+        const isActive = step.num === currentStep;
+        const isCompleted = step.num < currentStep;
+        return (
+          <div key={step.num} className="flex items-center gap-2">
+            {i > 0 && <div className={`h-0.5 w-8 ${isCompleted ? "bg-primary" : "bg-border"}`} />}
+            <div className="flex flex-col items-center gap-1">
+              <div className={`h-8 w-8 rounded-full flex items-center justify-center text-sm font-medium ${
+                isActive || isCompleted ? "bg-primary text-primary-foreground" : "bg-muted text-muted-foreground"
+              }`}>
+                {isCompleted ? "\u2713" : step.num}
+              </div>
+              <span className={`text-xs ${isActive || isCompleted ? "text-primary font-medium" : "text-muted-foreground"}`}>
+                {step.label}
+              </span>
+            </div>
+          </div>
+        );
+      })}
+    </div>
+  );
 
   const currentDate = new Date().toLocaleDateString("en-US", {
     weekday: "long",
@@ -405,6 +449,7 @@ export default function ConsentSigning() {
         </header>
 
         <main className="container py-12 max-w-2xl">
+          {renderStepIndicator()}
           <div className="text-center mb-8">
             <h1 className="text-2xl sm:text-3xl font-bold font-display mb-3">
               Welcome
@@ -495,6 +540,7 @@ export default function ConsentSigning() {
         </header>
 
         <main className="container py-6 sm:py-8 px-4 sm:px-6 max-w-md">
+          {renderStepIndicator()}
           <Button
             variant="ghost"
             size="sm"
@@ -589,6 +635,7 @@ export default function ConsentSigning() {
         </header>
 
         <main className="container py-6 sm:py-8 px-4 sm:px-6 max-w-lg">
+          {renderStepIndicator()}
           <Button
             variant="ghost"
             size="sm"
@@ -678,7 +725,7 @@ export default function ConsentSigning() {
                   <Input
                     id="password"
                     type="password"
-                    placeholder="At least 6 characters"
+                    placeholder="At least 12 characters"
                     value={password}
                     onChange={(e) => setPassword(e.target.value)}
                     className="input-focus-ring"
@@ -734,6 +781,7 @@ export default function ConsentSigning() {
       </header>
 
       <main className="container py-6 sm:py-8 px-4 sm:px-6 max-w-3xl">
+        {renderStepIndicator()}
         <div className="mb-6 sm:mb-8">
           <h1 className="text-xl sm:text-2xl md:text-3xl font-bold font-display mb-2">
             {invite?.module_name}
@@ -815,8 +863,8 @@ export default function ConsentSigning() {
                 <FileText className="h-5 w-5 text-primary" />
                 <h2 className="font-semibold">Consent Information</h2>
               </div>
-              <div className="max-h-96 overflow-y-auto pr-2">
-                <div className="space-y-4 text-sm leading-relaxed text-foreground/80">
+              <div className="max-h-[32rem] overflow-y-auto pr-2">
+                <div className="space-y-4 text-base leading-relaxed text-foreground/80">
                   {invite.module_description.split('\n').map((paragraph, index) => (
                     paragraph.trim() && (
                       <p key={index} className="text-justify">
@@ -857,7 +905,7 @@ export default function ConsentSigning() {
           </div>
 
           {/* Signature Section */}
-          <div className="card-elevated p-4 sm:p-6">
+          <div className="card-elevated p-4 sm:p-6 border-2 border-dashed border-primary/30 bg-primary/5">
             <h2 className="font-semibold mb-4">Digital Signature</h2>
             <div className="space-y-4">
               <div className="space-y-2">
@@ -867,9 +915,15 @@ export default function ConsentSigning() {
                   placeholder="e.g., Sarah Johnson"
                   value={signature}
                   onChange={(e) => setSignature(e.target.value)}
-                  className="input-focus-ring text-base sm:text-lg"
+                  className="input-focus-ring text-base sm:text-lg font-medium"
                 />
               </div>
+              {signature.trim() && (
+                <div className="p-3 rounded-lg bg-background border">
+                  <p className="text-xs text-muted-foreground mb-1">Signature preview:</p>
+                  <p className="text-lg font-display italic text-primary">{signature}</p>
+                </div>
+              )}
               <p className="text-xs text-muted-foreground">
                 By typing your name above, you acknowledge that this constitutes a legal signature.
               </p>

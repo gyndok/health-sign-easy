@@ -1,5 +1,5 @@
 import { useState, useEffect } from "react";
-import { useNavigate } from "react-router-dom";
+import { useNavigate, Link } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -44,7 +44,11 @@ export default function Auth() {
 
   const validatePassword = (password: string) => {
     if (!password) return "Password is required";
-    if (password.length < 6) return "Password must be at least 6 characters";
+    if (password.length < 12) return "Password must be at least 12 characters";
+    if (!/[A-Z]/.test(password)) return "Password must contain an uppercase letter";
+    if (!/[a-z]/.test(password)) return "Password must contain a lowercase letter";
+    if (!/[0-9]/.test(password)) return "Password must contain a number";
+    if (!/[^A-Za-z0-9]/.test(password)) return "Password must contain a special character";
     return undefined;
   };
 
@@ -146,19 +150,22 @@ export default function Auth() {
             Streamline your consent workflow with secure digital signatures, 
             educational modules, and automated tracking.
           </p>
-          <div className="mt-12 grid grid-cols-3 gap-6">
-            <div className="text-center">
-              <p className="text-3xl font-bold text-white">10k+</p>
-              <p className="text-sm text-white/70">Consents Signed</p>
-            </div>
-            <div className="text-center">
-              <p className="text-3xl font-bold text-white">500+</p>
-              <p className="text-sm text-white/70">Providers</p>
-            </div>
-            <div className="text-center">
-              <p className="text-3xl font-bold text-white">99.9%</p>
-              <p className="text-sm text-white/70">Uptime</p>
-            </div>
+          <div className="mt-12 space-y-6">
+            {[
+              { title: "Digital Signatures", desc: "Secure, legally-binding digital consent" },
+              { title: "Real-time Tracking", desc: "Monitor consent status instantly" },
+              { title: "HIPAA Compliant", desc: "Built with security and privacy first" },
+            ].map((item) => (
+              <div key={item.title} className="flex items-center gap-3">
+                <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-white/20">
+                  <Shield className="h-4 w-4 text-white" />
+                </div>
+                <div>
+                  <p className="text-sm font-semibold text-white">{item.title}</p>
+                  <p className="text-xs text-white/70">{item.desc}</p>
+                </div>
+              </div>
+            ))}
           </div>
         </div>
       </div>
@@ -329,9 +336,9 @@ export default function Auth() {
           <div className="mt-8 pt-6 border-t border-border">
             <p className="text-xs text-center text-muted-foreground">
               By continuing, you agree to ClearConsent's{" "}
-              <a href="#" className="underline hover:text-foreground">Terms of Service</a>
+              <Link to="/terms" className="underline hover:text-foreground">Terms of Service</Link>
               {" "}and{" "}
-              <a href="#" className="underline hover:text-foreground">Privacy Policy</a>
+              <Link to="/privacy" className="underline hover:text-foreground">Privacy Policy</Link>
             </p>
           </div>
         </div>

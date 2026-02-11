@@ -58,7 +58,7 @@ interface NotificationPreferences {
 }
 
 export default function PatientSettings() {
-  const { user, isLoading: authLoading } = useAuth();
+  const { user, isLoading: authLoading, signOut } = useAuth();
   const navigate = useNavigate();
   
   // Profile state
@@ -195,8 +195,12 @@ export default function PatientSettings() {
       return;
     }
     
-    if (newPassword.length < 8) {
-      toast.error("Password must be at least 8 characters");
+    if (newPassword.length < 12) {
+      toast.error("Password must be at least 12 characters");
+      return;
+    }
+    if (!/[A-Z]/.test(newPassword) || !/[a-z]/.test(newPassword) || !/[0-9]/.test(newPassword) || !/[^A-Za-z0-9]/.test(newPassword)) {
+      toast.error("Password must contain uppercase, lowercase, number, and special character");
       return;
     }
     
@@ -259,12 +263,41 @@ export default function PatientSettings() {
   };
 
   const handleDeleteAccountRequest = async () => {
-    // For now, just show a confirmation and log the request
-    // In production, this would trigger an email to support or a deletion workflow
+    if (!user) return;
     setIsDeleting(true);
-    
-    toast.success("Account deletion request submitted. You will receive a confirmation email.");
-    
+
+    try {
+      // Delete user data in order (respecting foreign key constraints)
+      await supabase
+        .from("patient_notification_preferences")
+        .delete()
+        .eq("user_id", user.id);
+
+      await supabase
+        .from("consent_withdrawals")
+        .delete()
+        .eq("patient_user_id", user.id);
+
+      await supabase
+        .from("patient_profiles")
+        .delete()
+        .eq("user_id", user.id);
+
+      await supabase
+        .from("user_roles")
+        .delete()
+        .eq("user_id", user.id);
+
+      // Sign out (Supabase admin SDK would be needed for full auth user deletion,
+      // but we clear all data and sign out on the client side)
+      await signOut();
+      toast.success("Your account data has been deleted.");
+      navigate("/");
+    } catch (err) {
+      console.error("Error deleting account:", err);
+      toast.error("Failed to delete account. Please contact support.");
+    }
+
     setIsDeleting(false);
     setDeleteDialogOpen(false);
     setDeleteReason("");
