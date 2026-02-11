@@ -9,6 +9,8 @@ import { useAuth } from "@/hooks/useAuth";
 import { MFAChallenge } from "@/components/auth/MFAChallenge";
 import Index from "./pages/Index";
 import Auth from "./pages/Auth";
+import ForgotPassword from "./pages/ForgotPassword";
+import ResetPassword from "./pages/ResetPassword";
 import Dashboard from "./pages/Dashboard";
 import PatientDashboard from "./pages/PatientDashboard";
 import PatientSettings from "./pages/PatientSettings";
@@ -53,6 +55,8 @@ const App = () => (
               <Routes>
                 <Route path="/" element={<Index />} />
                 <Route path="/auth" element={<Auth />} />
+                <Route path="/forgot-password" element={<ForgotPassword />} />
+                <Route path="/reset-password" element={<ResetPassword />} />
                 <Route path="/dashboard" element={<Dashboard />} />
                 <Route path="/patient-dashboard" element={<PatientDashboard />} />
                 <Route path="/patient-settings" element={<PatientSettings />} />
