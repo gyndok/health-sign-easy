@@ -36,6 +36,9 @@ interface AuditLogEntry {
 }
 
 const ACTION_LABELS: Record<string, { label: string; variant: "default" | "secondary" | "destructive" | "outline" }> = {
+  user_login: { label: "Login", variant: "default" },
+  user_logout: { label: "Logout", variant: "outline" },
+  user_updated: { label: "Account Updated", variant: "outline" },
   consent_signed: { label: "Consent Signed", variant: "default" },
   consent_withdrawn: { label: "Consent Withdrawn", variant: "destructive" },
   invite_created: { label: "Invite Created", variant: "secondary" },
