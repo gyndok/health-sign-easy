@@ -1,4 +1,4 @@
-import { useState, useEffect, createContext, useContext, ReactNode } from "react";
+import { useState, useEffect, createContext, useContext, ReactNode, useCallback } from "react";
 import { User, Session } from "@supabase/supabase-js";
 import { supabase } from "@/integrations/supabase/client";
 
@@ -19,10 +19,12 @@ interface AuthContextType {
   profile: ProviderProfile | null;
   role: "provider" | "patient" | null;
   isLoading: boolean;
+  mfaRequired: boolean;
   signIn: (email: string, password: string) => Promise<{ error: Error | null }>;
   signUp: (email: string, password: string, fullName: string, role: "provider" | "patient") => Promise<{ error: Error | null }>;
   signOut: () => Promise<void>;
   refreshProfile: () => Promise<void>;
+  refreshMFAStatus: () => Promise<void>;
 }
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
@@ -33,6 +35,25 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const [profile, setProfile] = useState<ProviderProfile | null>(null);
   const [role, setRole] = useState<"provider" | "patient" | null>(null);
   const [isLoading, setIsLoading] = useState(true);
+  const [mfaRequired, setMfaRequired] = useState(false);
+
+  const checkMFAStatus = useCallback(async () => {
+    const { data, error } = await supabase.auth.mfa.getAuthenticatorAssuranceLevel();
+    if (error) {
+      console.error("Error checking MFA:", error);
+      return;
+    }
+    // If user has enrolled MFA factors but current level is aal1, they need to verify
+    if (data.currentLevel === "aal1" && data.nextLevel === "aal2") {
+      setMfaRequired(true);
+    } else {
+      setMfaRequired(false);
+    }
+  }, []);
+
+  const refreshMFAStatus = useCallback(async () => {
+    await checkMFAStatus();
+  }, [checkMFAStatus]);
 
   const fetchProfile = async (userId: string) => {
     // Fetch role
@@ -71,10 +92,12 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         if (session?.user) {
           setTimeout(() => {
             fetchProfile(session.user.id);
+            checkMFAStatus();
           }, 0);
         } else {
           setProfile(null);
           setRole(null);
+          setMfaRequired(false);
         }
       }
     );
@@ -85,7 +108,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       setUser(session?.user ?? null);
       
       if (session?.user) {
-        fetchProfile(session.user.id).finally(() => setIsLoading(false));
+        Promise.all([fetchProfile(session.user.id), checkMFAStatus()]).finally(() => setIsLoading(false));
       } else {
         setIsLoading(false);
       }
@@ -123,6 +146,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     await supabase.auth.signOut();
     setProfile(null);
     setRole(null);
+    setMfaRequired(false);
   };
 
   const refreshProfile = async () => {
@@ -138,10 +162,12 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       profile, 
       role, 
       isLoading, 
+      mfaRequired,
       signIn, 
       signUp, 
       signOut,
-      refreshProfile 
+      refreshProfile,
+      refreshMFAStatus,
     }}>
       {children}
     </AuthContext.Provider>
