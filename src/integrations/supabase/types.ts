@@ -14,6 +14,39 @@ export type Database = {
   }
   public: {
     Tables: {
+      audit_logs: {
+        Row: {
+          action: string
+          created_at: string
+          details: Json | null
+          id: string
+          ip_address: string | null
+          record_id: string | null
+          table_name: string
+          user_id: string | null
+        }
+        Insert: {
+          action: string
+          created_at?: string
+          details?: Json | null
+          id?: string
+          ip_address?: string | null
+          record_id?: string | null
+          table_name: string
+          user_id?: string | null
+        }
+        Update: {
+          action?: string
+          created_at?: string
+          details?: Json | null
+          id?: string
+          ip_address?: string | null
+          record_id?: string | null
+          table_name?: string
+          user_id?: string | null
+        }
+        Relationships: []
+      }
       consent_modules: {
         Row: {
           created_at: string
@@ -153,6 +186,7 @@ export type Database = {
           patient_last_name: string | null
           patient_phone: string | null
           patient_user_id: string | null
+          reminder_sent_at: string | null
           status: Database["public"]["Enums"]["invite_status"]
           token: string
           viewed_at: string | null
@@ -170,6 +204,7 @@ export type Database = {
           patient_last_name?: string | null
           patient_phone?: string | null
           patient_user_id?: string | null
+          reminder_sent_at?: string | null
           status?: Database["public"]["Enums"]["invite_status"]
           token?: string
           viewed_at?: string | null
@@ -187,6 +222,7 @@ export type Database = {
           patient_last_name?: string | null
           patient_phone?: string | null
           patient_user_id?: string | null
+          reminder_sent_at?: string | null
           status?: Database["public"]["Enums"]["invite_status"]
           token?: string
           viewed_at?: string | null
