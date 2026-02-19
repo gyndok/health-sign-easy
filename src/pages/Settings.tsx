@@ -9,7 +9,9 @@ import { Separator } from "@/components/ui/separator";
 import { useAuth } from "@/hooks/useAuth";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
-import { Loader2, Save, User, Building, Phone, Mail, Clock } from "lucide-react";
+import { Loader2, Save, User, Building, Phone, Mail, Clock, Play } from "lucide-react";
+import { Switch } from "@/components/ui/switch";
+import { useDemoMode } from "@/hooks/useDemoMode";
 import {
   Select,
   SelectContent,
@@ -39,6 +41,7 @@ const timezones = [
 
 export default function Settings() {
   const { user, profile, isLoading: authLoading } = useAuth();
+  const { isDemoMode, enableDemo, disableDemo } = useDemoMode();
   const navigate = useNavigate();
   const [isLoading, setIsLoading] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
@@ -237,6 +240,34 @@ export default function Settings() {
                   ))}
                 </SelectContent>
               </Select>
+            </div>
+          </CardContent>
+        </Card>
+
+        {/* Demo Mode */}
+        <Card>
+          <CardHeader>
+            <CardTitle className="flex items-center gap-2">
+              <Play className="h-5 w-5" />
+              Demo Mode
+            </CardTitle>
+            <CardDescription>
+              Enable a live demo toolbar to switch between provider and patient views — perfect for showcasing ClearConsent to partners.
+            </CardDescription>
+          </CardHeader>
+          <CardContent>
+            <div className="flex items-center justify-between">
+              <div className="space-y-0.5">
+                <Label htmlFor="demo-toggle">Enable Demo Mode</Label>
+                <p className="text-xs text-muted-foreground">
+                  Shows a floating toolbar with view switching
+                </p>
+              </div>
+              <Switch
+                id="demo-toggle"
+                checked={isDemoMode}
+                onCheckedChange={(checked) => (checked ? enableDemo() : disableDemo())}
+              />
             </div>
           </CardContent>
         </Card>
