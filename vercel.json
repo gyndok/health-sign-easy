@@ -1,0 +1,8 @@
+{
+  "framework": "vite",
+  "buildCommand": "vite build",
+  "outputDirectory": "dist",
+  "installCommand": "npm install",
+  "devCommand": "vite",
+  "regions": ["iad1"]
+}
