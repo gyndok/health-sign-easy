@@ -125,6 +125,7 @@ const handler = async (req: Request): Promise<Response> => {
         ...corsHeaders,
       },
     });
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
   } catch (error: any) {
     console.error("Error sending invitation email:", error);
     return new Response(
