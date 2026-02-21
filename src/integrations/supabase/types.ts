@@ -14,38 +14,52 @@ export type Database = {
   }
   public: {
     Tables: {
-      audit_logs: {
+      audit_log: {
         Row: {
           action: string
+          actor_id: string | null
           created_at: string
           details: Json | null
           id: string
-          ip_address: string | null
-          record_id: string | null
-          table_name: string
-          user_id: string | null
+          ip_address: unknown
+          org_id: string | null
+          resource_id: string | null
+          resource_type: string
+          user_agent: string | null
         }
         Insert: {
           action: string
+          actor_id?: string | null
           created_at?: string
           details?: Json | null
           id?: string
-          ip_address?: string | null
-          record_id?: string | null
-          table_name: string
-          user_id?: string | null
+          ip_address?: unknown
+          org_id?: string | null
+          resource_id?: string | null
+          resource_type: string
+          user_agent?: string | null
         }
         Update: {
           action?: string
+          actor_id?: string | null
           created_at?: string
           details?: Json | null
           id?: string
-          ip_address?: string | null
-          record_id?: string | null
-          table_name?: string
-          user_id?: string | null
+          ip_address?: unknown
+          org_id?: string | null
+          resource_id?: string | null
+          resource_type?: string
+          user_agent?: string | null
         }
-        Relationships: []
+        Relationships: [
+          {
+            foreignKeyName: "audit_log_org_id_fkey"
+            columns: ["org_id"]
+            isOneToOne: false
+            referencedRelation: "organizations"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       consent_modules: {
         Row: {
@@ -79,6 +93,107 @@ export type Database = {
           video_url?: string | null
         }
         Relationships: []
+      }
+      consent_requests: {
+        Row: {
+          created_at: string
+          deleted_at: string | null
+          expiration_date: string | null
+          id: string
+          is_sud: boolean | null
+          org_id: string
+          patient_id: string
+          provider_id: string
+          sent_at: string | null
+          signed_at: string | null
+          status: string
+          sud_info_description: string | null
+          sud_purpose: string | null
+          sud_recipient_name: string | null
+          sud_specific_purpose: string | null
+          template_id: string | null
+          template_version: number | null
+          updated_at: string
+          viewed_at: string | null
+          withdrawal_reason: string | null
+          withdrawn_at: string | null
+        }
+        Insert: {
+          created_at?: string
+          deleted_at?: string | null
+          expiration_date?: string | null
+          id?: string
+          is_sud?: boolean | null
+          org_id: string
+          patient_id: string
+          provider_id: string
+          sent_at?: string | null
+          signed_at?: string | null
+          status?: string
+          sud_info_description?: string | null
+          sud_purpose?: string | null
+          sud_recipient_name?: string | null
+          sud_specific_purpose?: string | null
+          template_id?: string | null
+          template_version?: number | null
+          updated_at?: string
+          viewed_at?: string | null
+          withdrawal_reason?: string | null
+          withdrawn_at?: string | null
+        }
+        Update: {
+          created_at?: string
+          deleted_at?: string | null
+          expiration_date?: string | null
+          id?: string
+          is_sud?: boolean | null
+          org_id?: string
+          patient_id?: string
+          provider_id?: string
+          sent_at?: string | null
+          signed_at?: string | null
+          status?: string
+          sud_info_description?: string | null
+          sud_purpose?: string | null
+          sud_recipient_name?: string | null
+          sud_specific_purpose?: string | null
+          template_id?: string | null
+          template_version?: number | null
+          updated_at?: string
+          viewed_at?: string | null
+          withdrawal_reason?: string | null
+          withdrawn_at?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "consent_requests_org_id_fkey"
+            columns: ["org_id"]
+            isOneToOne: false
+            referencedRelation: "organizations"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "consent_requests_patient_id_fkey"
+            columns: ["patient_id"]
+            isOneToOne: false
+            referencedRelation: "user_profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "consent_requests_provider_id_fkey"
+            columns: ["provider_id"]
+            isOneToOne: false
+            referencedRelation: "user_profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "consent_requests_template_id_fkey"
+            columns: ["template_id"]
+            isOneToOne: false
+            referencedRelation: "consent_templates"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       consent_submissions: {
         Row: {
@@ -137,6 +252,66 @@ export type Database = {
           },
         ]
       }
+      consent_templates: {
+        Row: {
+          consent_text: string
+          created_at: string
+          created_by: string
+          deleted_at: string | null
+          education_materials: Json | null
+          id: string
+          is_sud: boolean | null
+          org_id: string
+          status: string | null
+          title: string
+          updated_at: string
+          version: number | null
+        }
+        Insert: {
+          consent_text: string
+          created_at?: string
+          created_by: string
+          deleted_at?: string | null
+          education_materials?: Json | null
+          id?: string
+          is_sud?: boolean | null
+          org_id: string
+          status?: string | null
+          title: string
+          updated_at?: string
+          version?: number | null
+        }
+        Update: {
+          consent_text?: string
+          created_at?: string
+          created_by?: string
+          deleted_at?: string | null
+          education_materials?: Json | null
+          id?: string
+          is_sud?: boolean | null
+          org_id?: string
+          status?: string | null
+          title?: string
+          updated_at?: string
+          version?: number | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "consent_templates_created_by_fkey"
+            columns: ["created_by"]
+            isOneToOne: false
+            referencedRelation: "user_profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "consent_templates_org_id_fkey"
+            columns: ["org_id"]
+            isOneToOne: false
+            referencedRelation: "organizations"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       consent_withdrawals: {
         Row: {
           created_at: string
@@ -186,7 +361,6 @@ export type Database = {
           patient_last_name: string | null
           patient_phone: string | null
           patient_user_id: string | null
-          reminder_sent_at: string | null
           status: Database["public"]["Enums"]["invite_status"]
           token: string
           viewed_at: string | null
@@ -204,7 +378,6 @@ export type Database = {
           patient_last_name?: string | null
           patient_phone?: string | null
           patient_user_id?: string | null
-          reminder_sent_at?: string | null
           status?: Database["public"]["Enums"]["invite_status"]
           token?: string
           viewed_at?: string | null
@@ -222,7 +395,6 @@ export type Database = {
           patient_last_name?: string | null
           patient_phone?: string | null
           patient_user_id?: string | null
-          reminder_sent_at?: string | null
           status?: Database["public"]["Enums"]["invite_status"]
           token?: string
           viewed_at?: string | null
@@ -236,6 +408,48 @@ export type Database = {
             referencedColumns: ["id"]
           },
         ]
+      }
+      organizations: {
+        Row: {
+          created_at: string
+          deleted_at: string | null
+          id: string
+          logo_url: string | null
+          name: string
+          npi_number: string | null
+          settings: Json | null
+          slug: string
+          stripe_customer_id: string | null
+          subscription_tier: string | null
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          deleted_at?: string | null
+          id?: string
+          logo_url?: string | null
+          name: string
+          npi_number?: string | null
+          settings?: Json | null
+          slug: string
+          stripe_customer_id?: string | null
+          subscription_tier?: string | null
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          deleted_at?: string | null
+          id?: string
+          logo_url?: string | null
+          name?: string
+          npi_number?: string | null
+          settings?: Json | null
+          slug?: string
+          stripe_customer_id?: string | null
+          subscription_tier?: string | null
+          updated_at?: string
+        }
+        Relationships: []
       }
       patient_notification_preferences: {
         Row: {
@@ -345,6 +559,137 @@ export type Database = {
         }
         Relationships: []
       }
+      signatures: {
+        Row: {
+          block_number: number | null
+          blockchain_status: string | null
+          consent_hash: string
+          consent_request_id: string
+          deleted_at: string | null
+          encrypted_signature_data: string | null
+          id: string
+          ip_address: unknown
+          patient_id: string
+          prohibition_acknowledged: boolean | null
+          signature_data: string
+          signature_type: string
+          signed_at: string
+          tx_hash: string | null
+          user_agent: string | null
+        }
+        Insert: {
+          block_number?: number | null
+          blockchain_status?: string | null
+          consent_hash: string
+          consent_request_id: string
+          deleted_at?: string | null
+          encrypted_signature_data?: string | null
+          id?: string
+          ip_address?: unknown
+          patient_id: string
+          prohibition_acknowledged?: boolean | null
+          signature_data: string
+          signature_type: string
+          signed_at?: string
+          tx_hash?: string | null
+          user_agent?: string | null
+        }
+        Update: {
+          block_number?: number | null
+          blockchain_status?: string | null
+          consent_hash?: string
+          consent_request_id?: string
+          deleted_at?: string | null
+          encrypted_signature_data?: string | null
+          id?: string
+          ip_address?: unknown
+          patient_id?: string
+          prohibition_acknowledged?: boolean | null
+          signature_data?: string
+          signature_type?: string
+          signed_at?: string
+          tx_hash?: string | null
+          user_agent?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "signatures_consent_request_id_fkey"
+            columns: ["consent_request_id"]
+            isOneToOne: false
+            referencedRelation: "consent_requests"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "signatures_patient_id_fkey"
+            columns: ["patient_id"]
+            isOneToOne: false
+            referencedRelation: "user_profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      user_profiles: {
+        Row: {
+          created_at: string
+          deleted_at: string | null
+          email: string | null
+          encrypted_ssn: string | null
+          full_name: string
+          id: string
+          last_login_at: string | null
+          mfa_enabled: boolean | null
+          org_id: string
+          phone: string | null
+          practice_name: string | null
+          primary_specialty: string | null
+          role: string
+          timezone: string | null
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          deleted_at?: string | null
+          email?: string | null
+          encrypted_ssn?: string | null
+          full_name: string
+          id: string
+          last_login_at?: string | null
+          mfa_enabled?: boolean | null
+          org_id: string
+          phone?: string | null
+          practice_name?: string | null
+          primary_specialty?: string | null
+          role: string
+          timezone?: string | null
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          deleted_at?: string | null
+          email?: string | null
+          encrypted_ssn?: string | null
+          full_name?: string
+          id?: string
+          last_login_at?: string | null
+          mfa_enabled?: boolean | null
+          org_id?: string
+          phone?: string | null
+          practice_name?: string | null
+          primary_specialty?: string | null
+          role?: string
+          timezone?: string | null
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "user_profiles_org_id_fkey"
+            columns: ["org_id"]
+            isOneToOne: false
+            referencedRelation: "organizations"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       user_roles: {
         Row: {
           created_at: string
@@ -393,6 +738,16 @@ export type Database = {
       link_invite_patient_user_by_token: {
         Args: { p_first_name: string; p_last_name: string; p_token: string }
         Returns: boolean
+      }
+      log_audit_event: {
+        Args: {
+          p_action: string
+          p_details?: Json
+          p_org_id?: string
+          p_resource_id: string
+          p_resource_type: string
+        }
+        Returns: string
       }
       mark_invite_viewed: { Args: { p_token: string }; Returns: boolean }
       submit_consent_by_token: {

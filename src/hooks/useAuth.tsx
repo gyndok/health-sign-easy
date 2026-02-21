@@ -1,23 +1,17 @@
 import { useState, useEffect, createContext, useContext, ReactNode } from "react";
 import { User, Session } from "@supabase/supabase-js";
 import { supabase } from "@/integrations/supabase/client";
+import { Database } from "@/integrations/supabase/types";
 
-interface ProviderProfile {
-  id: string;
-  user_id: string;
-  full_name: string;
-  email: string;
-  practice_name: string | null;
-  primary_specialty: string | null;
-  phone: string | null;
-  timezone: string;
-}
+type UserProfile = Database['public']['Tables']['user_profiles']['Row'];
+type Organization = Database['public']['Tables']['organizations']['Row'];
 
 interface AuthContextType {
   user: User | null;
   session: Session | null;
-  profile: ProviderProfile | null;
-  role: "provider" | "patient" | null;
+  profile: UserProfile | null;
+  organization: Organization | null;
+  role: "provider" | "patient" | "org_admin" | "super_admin" | null;
   isLoading: boolean;
   signIn: (email: string, password: string) => Promise<{ error: Error | null }>;
   signUp: (email: string, password: string, fullName: string, role: "provider" | "patient") => Promise<{ error: Error | null }>;
@@ -30,31 +24,41 @@ const AuthContext = createContext<AuthContextType | undefined>(undefined);
 export function AuthProvider({ children }: { children: ReactNode }) {
   const [user, setUser] = useState<User | null>(null);
   const [session, setSession] = useState<Session | null>(null);
-  const [profile, setProfile] = useState<ProviderProfile | null>(null);
-  const [role, setRole] = useState<"provider" | "patient" | null>(null);
+  const [profile, setProfile] = useState<UserProfile | null>(null);
+  const [organization, setOrganization] = useState<Organization | null>(null);
+  const [role, setRole] = useState<"provider" | "patient" | "org_admin" | "super_admin" | null>(null);
   const [isLoading, setIsLoading] = useState(true);
 
   const fetchProfile = async (userId: string) => {
-    // Fetch role
-    const { data: roleData } = await supabase
-      .from("user_roles")
-      .select("role")
-      .eq("user_id", userId)
+    // Fetch user profile including org_id and role
+    const { data: profileData, error: profileError } = await supabase
+      .from("user_profiles")
+      .select("*")
+      .eq("id", userId)
       .single();
 
-    if (roleData) {
-      setRole(roleData.role as "provider" | "patient");
+    if (profileError) {
+      console.error("Failed to fetch user profile:", profileError);
+      setProfile(null);
+      setRole(null);
+      setOrganization(null);
+      return;
+    }
 
-      // If provider, fetch profile
-      if (roleData.role === "provider") {
-        const { data: profileData } = await supabase
-          .from("provider_profiles")
+    if (profileData) {
+      setProfile(profileData);
+      setRole(profileData.role as "provider" | "patient" | "org_admin" | "super_admin");
+
+      // Fetch organization if org_id exists
+      if (profileData.org_id) {
+        const { data: orgData } = await supabase
+          .from("organizations")
           .select("*")
-          .eq("user_id", userId)
+          .eq("id", profileData.org_id)
           .single();
 
-        if (profileData) {
-          setProfile(profileData as ProviderProfile);
+        if (orgData) {
+          setOrganization(orgData);
         }
       }
     }
@@ -75,6 +79,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         } else {
           setProfile(null);
           setRole(null);
+          setOrganization(null);
         }
       }
     );
@@ -123,6 +128,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     await supabase.auth.signOut();
     setProfile(null);
     setRole(null);
+    setOrganization(null);
   };
 
   const refreshProfile = async () => {
@@ -136,6 +142,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       user, 
       session, 
       profile, 
+      organization,
       role, 
       isLoading, 
       signIn, 

@@ -64,7 +64,7 @@ export default function Settings() {
     if (profile) {
       setFormData({
         full_name: profile.full_name || "",
-        email: profile.email || "",
+        email: user?.email || profile.email || "",
         practice_name: profile.practice_name || "",
         primary_specialty: profile.primary_specialty || "",
         phone: profile.phone || "",
@@ -82,7 +82,7 @@ export default function Settings() {
 
     setIsSaving(true);
     const { error } = await supabase
-      .from("provider_profiles")
+      .from("user_profiles")
       .update({
         full_name: formData.full_name,
         practice_name: formData.practice_name || null,
@@ -90,7 +90,7 @@ export default function Settings() {
         phone: formData.phone || null,
         timezone: formData.timezone,
       })
-      .eq("user_id", user.id);
+      .eq("id", user.id);
 
     if (error) {
       console.error("Error updating profile:", error);
