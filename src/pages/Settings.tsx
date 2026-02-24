@@ -119,7 +119,7 @@ export default function Settings() {
     if (!user) return;
 
     setIsSaving(true);
-    const { error } = await supabase.rpc("update_provider_profile", {
+    const { data, error } = await supabase.rpc("update_provider_profile", {
       p_full_name: formData.full_name,
       p_practice_name: formData.practice_name || null,
       p_primary_specialty: formData.primary_specialty || null,
@@ -131,7 +131,12 @@ export default function Settings() {
       console.error("Error updating profile:", error);
       toast.error("Failed to update profile", { description: error.message });
     } else {
-      toast.success("Profile updated successfully");
+      const result = data as unknown as { status: string; rows_updated: number };
+      if (result?.status === "not_found") {
+        toast.error("Profile not found", { description: "Your user profile row could not be located. Please contact support." });
+      } else {
+        toast.success("Profile updated successfully");
+      }
     }
     setIsSaving(false);
   };
