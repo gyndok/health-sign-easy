@@ -57,7 +57,8 @@ export function DemoToolbar() {
       }
     } catch (error) {
       console.error("Error seeding:", error);
-      toast.error("Failed to populate demo data");
+      const message = error instanceof Error ? error.message : "Unknown error";
+      toast.error("Failed to populate demo data", { description: message });
     }
     setIsSeeding(false);
   };

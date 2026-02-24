@@ -771,6 +771,16 @@ export type Database = {
         Args: Record<string, never>
         Returns: Json
       }
+      update_provider_profile: {
+        Args: {
+          p_full_name: string
+          p_practice_name?: string | null
+          p_primary_specialty?: string | null
+          p_phone?: string | null
+          p_timezone?: string
+        }
+        Returns: Json
+      }
     }
     Enums: {
       app_role: "provider" | "patient"
