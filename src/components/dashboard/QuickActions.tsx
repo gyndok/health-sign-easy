@@ -4,7 +4,7 @@ import { Plus, Send, FileText, Users } from "lucide-react";
 
 export function QuickActions() {
   return (
-    <div className="card-elevated p-6">
+    <div data-tour="quick-actions" className="card-elevated p-6">
       <h2 className="text-lg font-semibold font-display mb-4">Quick Actions</h2>
       <div className="grid grid-cols-2 gap-3">
         <Button 

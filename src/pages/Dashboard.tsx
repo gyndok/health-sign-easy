@@ -1,4 +1,5 @@
 import { useEffect, useState } from "react";
+import { useSearchParams } from "react-router-dom";
 import { ProviderLayout } from "@/components/layout/ProviderLayout";
 import { StatCard, FileText, Users, Clock, CheckCircle2 } from "@/components/dashboard/StatCard";
 import { RecentSubmissionsTable } from "@/components/dashboard/RecentSubmissionsTable";
@@ -8,6 +9,7 @@ import { Input } from "@/components/ui/input";
 import { Search, AlertTriangle } from "lucide-react";
 import { useAuth } from "@/hooks/useAuth";
 import { supabase } from "@/integrations/supabase/client";
+import { useDemoTour } from "@/hooks/useDemoTour";
 
 interface DashboardStats {
   pendingConsents: number;
@@ -19,6 +21,8 @@ interface DashboardStats {
 
 export default function Dashboard() {
   const { user, profile } = useAuth();
+  const { startTour } = useDemoTour();
+  const [searchParams, setSearchParams] = useSearchParams();
   const [searchQuery, setSearchQuery] = useState("");
   const [stats, setStats] = useState<DashboardStats>({
     pendingConsents: 0,
@@ -33,6 +37,17 @@ export default function Dashboard() {
       fetchStats();
     }
   }, [user]);
+
+  // Auto-start tour from URL param (e.g., after seeding demo data)
+  useEffect(() => {
+    if (searchParams.get("tour") === "start") {
+      const timer = setTimeout(() => {
+        startTour();
+        setSearchParams({}, { replace: true });
+      }, 600);
+      return () => clearTimeout(timer);
+    }
+  }, [searchParams, startTour, setSearchParams]);
 
   const fetchStats = async () => {
     if (!user) return;
@@ -91,7 +106,7 @@ export default function Dashboard() {
     <ProviderLayout>
       <div className="space-y-8">
         {/* Header */}
-        <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+        <div data-tour="dashboard-header" className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
           <div>
             <h1 className="text-3xl font-bold font-display">Dashboard</h1>
             <p className="text-muted-foreground mt-1">
@@ -110,7 +125,7 @@ export default function Dashboard() {
         </div>
 
         {/* Stats Grid */}
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-4">
+        <div data-tour="stats-grid" className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-4">
           <StatCard
             title="Pending Consents"
             value={stats.pendingConsents}

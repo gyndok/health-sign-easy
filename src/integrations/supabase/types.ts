@@ -763,6 +763,14 @@ export type Database = {
         Args: { p_first_name: string; p_last_name: string; p_token: string }
         Returns: boolean
       }
+      seed_demo_data: {
+        Args: Record<string, never>
+        Returns: Json
+      }
+      clear_demo_data: {
+        Args: Record<string, never>
+        Returns: Json
+      }
     }
     Enums: {
       app_role: "provider" | "patient"

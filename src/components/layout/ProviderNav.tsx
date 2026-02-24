@@ -70,7 +70,7 @@ export function ProviderNav() {
         </Link>
 
         {/* Desktop Navigation */}
-        <nav className="hidden md:flex items-center gap-1">
+        <nav data-tour="provider-nav" className="hidden md:flex items-center gap-1">
           {navItems.map((item) => {
             const isActive = location.pathname === item.href;
             return (

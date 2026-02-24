@@ -194,6 +194,46 @@
     background-clip: text;
   }
 
+  /* Browser frame for landing page preview */
+  .browser-frame {
+    @apply rounded-xl border border-border overflow-hidden;
+    box-shadow: var(--shadow-xl);
+  }
+
+  .browser-frame-header {
+    @apply flex items-center gap-3 px-4 py-2.5 bg-muted/80 border-b border-border;
+  }
+
+  .browser-frame-dots {
+    @apply flex items-center gap-1.5;
+  }
+
+  .browser-frame-dots span {
+    @apply block h-2.5 w-2.5 rounded-full;
+  }
+
+  .browser-frame-url {
+    @apply flex-1 text-xs text-muted-foreground bg-background/60 rounded-md px-3 py-1 text-center truncate;
+  }
+
+  /* Tour spotlight overlay */
+  .tour-overlay {
+    @apply fixed inset-0 z-[200] pointer-events-auto;
+    background: transparent;
+  }
+
+  .tour-spotlight {
+    @apply fixed z-[200] rounded-lg pointer-events-none;
+    box-shadow: 0 0 0 9999px rgba(0, 0, 0, 0.5);
+    transition: all 0.3s ease;
+  }
+
+  .tour-tooltip {
+    @apply fixed z-[201] bg-card border border-border rounded-xl p-5 max-w-sm;
+    box-shadow: var(--shadow-xl);
+    animation: scale-in 0.2s ease-out;
+  }
+
   /* Shimmer animation for loading */
   .shimmer {
     background: linear-gradient(

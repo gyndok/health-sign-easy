@@ -94,7 +94,8 @@ export default function Auth() {
           return;
         }
         toast.success("Welcome back!");
-        // Don't navigate here - let the useEffect handle redirect based on role
+        // Navigate directly — ProtectedRoute handles role-based redirects
+        navigate("/dashboard");
       } else {
         const { error } = await signUp(email, password, fullName, selectedRole);
         if (error) {

@@ -1,4 +1,5 @@
 import { useEffect, useState } from "react";
+import { useNavigate } from "react-router-dom";
 import { ProviderLayout } from "@/components/layout/ProviderLayout";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -8,9 +9,10 @@ import { Separator } from "@/components/ui/separator";
 import { useAuth } from "@/hooks/useAuth";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
-import { Loader2, Save, User, Building, Phone, Mail, Clock, Play } from "lucide-react";
+import { Loader2, Save, User, Building, Phone, Mail, Clock, Play, Database, Trash2, CheckCircle2 } from "lucide-react";
 import { Switch } from "@/components/ui/switch";
 import { useDemoMode } from "@/hooks/useDemoMode";
+import { seedDemoData, clearDemoData, hasDemoData } from "@/services/demoSeedService";
 import {
   Select,
   SelectContent,
@@ -41,8 +43,12 @@ const timezones = [
 export default function Settings() {
   const { user, profile } = useAuth();
   const { isDemoMode, enableDemo, disableDemo } = useDemoMode();
+  const navigate = useNavigate();
   const [isLoading, setIsLoading] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
+  const [isSeeding, setIsSeeding] = useState(false);
+  const [isClearing, setIsClearing] = useState(false);
+  const [demoDataLoaded, setDemoDataLoaded] = useState(false);
   const [formData, setFormData] = useState<ProfileData>({
     full_name: "",
     email: "",
@@ -51,6 +57,12 @@ export default function Settings() {
     phone: "",
     timezone: "America/Chicago",
   });
+
+  useEffect(() => {
+    if (isDemoMode) {
+      hasDemoData().then(setDemoDataLoaded);
+    }
+  }, [isDemoMode]);
 
   useEffect(() => {
     if (profile) {
@@ -67,6 +79,39 @@ export default function Settings() {
 
   const handleInputChange = (field: keyof ProfileData, value: string) => {
     setFormData((prev) => ({ ...prev, [field]: value }));
+  };
+
+  const handleSeedDemoData = async () => {
+    setIsSeeding(true);
+    try {
+      const result = await seedDemoData();
+      if (result.status === "already_seeded") {
+        toast.info("Demo data is already loaded");
+      } else {
+        toast.success("Demo data populated!", {
+          description: `Added ${result.modules} modules, ${result.invites} invites, ${result.submissions} submissions`,
+        });
+        navigate("/dashboard?tour=start");
+      }
+      setDemoDataLoaded(true);
+    } catch (error) {
+      console.error("Error seeding demo data:", error);
+      toast.error("Failed to populate demo data");
+    }
+    setIsSeeding(false);
+  };
+
+  const handleClearDemoData = async () => {
+    setIsClearing(true);
+    try {
+      await clearDemoData();
+      toast.success("Demo data cleared");
+      setDemoDataLoaded(false);
+    } catch (error) {
+      console.error("Error clearing demo data:", error);
+      toast.error("Failed to clear demo data");
+    }
+    setIsClearing(false);
   };
 
   const handleSave = async () => {
@@ -237,7 +282,7 @@ export default function Settings() {
               Enable a live demo toolbar to switch between provider and patient views — perfect for showcasing ClearConsent to partners.
             </CardDescription>
           </CardHeader>
-          <CardContent>
+          <CardContent className="space-y-6">
             <div className="flex items-center justify-between">
               <div className="space-y-0.5">
                 <Label htmlFor="demo-toggle">Enable Demo Mode</Label>
@@ -251,6 +296,58 @@ export default function Settings() {
                 onCheckedChange={(checked) => (checked ? enableDemo() : disableDemo())}
               />
             </div>
+
+            {isDemoMode && (
+              <>
+                <Separator />
+                <div className="space-y-4">
+                  <div>
+                    <Label className="text-sm font-medium">Demo Data</Label>
+                    <p className="text-xs text-muted-foreground mt-0.5">
+                      Populate your dashboard with sample medical consent data for demonstrations
+                    </p>
+                  </div>
+
+                  {demoDataLoaded && (
+                    <div className="flex items-center gap-2 text-sm text-green-600 bg-green-500/10 rounded-lg px-3 py-2">
+                      <CheckCircle2 className="h-4 w-4" />
+                      Demo data is loaded
+                    </div>
+                  )}
+
+                  <div className="flex gap-3">
+                    <Button
+                      onClick={handleSeedDemoData}
+                      disabled={isSeeding || demoDataLoaded}
+                      size="sm"
+                    >
+                      {isSeeding ? (
+                        <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                      ) : (
+                        <Database className="h-4 w-4 mr-2" />
+                      )}
+                      Populate Demo Data
+                    </Button>
+                    {demoDataLoaded && (
+                      <Button
+                        variant="outline"
+                        onClick={handleClearDemoData}
+                        disabled={isClearing}
+                        size="sm"
+                        className="text-destructive hover:text-destructive hover:bg-destructive/10"
+                      >
+                        {isClearing ? (
+                          <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                        ) : (
+                          <Trash2 className="h-4 w-4 mr-2" />
+                        )}
+                        Clear Demo Data
+                      </Button>
+                    )}
+                  </div>
+                </div>
+              </>
+            )}
           </CardContent>
         </Card>
 

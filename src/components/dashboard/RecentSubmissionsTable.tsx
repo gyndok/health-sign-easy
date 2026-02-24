@@ -163,7 +163,7 @@ export function RecentSubmissionsTable({ searchQuery = "" }: RecentSubmissionsTa
   }
 
   return (
-    <div className="card-elevated overflow-hidden">
+    <div data-tour="recent-submissions" className="card-elevated overflow-hidden">
       <div className="p-6 border-b border-border">
         <div className="flex items-center justify-between">
           <div>

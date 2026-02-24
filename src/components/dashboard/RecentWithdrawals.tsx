@@ -124,7 +124,7 @@ export function RecentWithdrawals() {
 
   return (
     <>
-      <div className="card-elevated">
+      <div data-tour="recent-withdrawals" className="card-elevated">
         <div className="p-4 border-b border-border">
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-2">
