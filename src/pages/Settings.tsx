@@ -96,7 +96,8 @@ export default function Settings() {
       setDemoDataLoaded(true);
     } catch (error) {
       console.error("Error seeding demo data:", error);
-      toast.error("Failed to populate demo data");
+      const message = error instanceof Error ? error.message : "Unknown error";
+      toast.error("Failed to populate demo data", { description: message });
     }
     setIsSeeding(false);
   };
@@ -118,20 +119,17 @@ export default function Settings() {
     if (!user) return;
 
     setIsSaving(true);
-    const { error } = await supabase
-      .from("user_profiles")
-      .update({
-        full_name: formData.full_name,
-        practice_name: formData.practice_name || null,
-        primary_specialty: formData.primary_specialty || null,
-        phone: formData.phone || null,
-        timezone: formData.timezone,
-      })
-      .eq("id", user.id);
+    const { error } = await supabase.rpc("update_provider_profile", {
+      p_full_name: formData.full_name,
+      p_practice_name: formData.practice_name || null,
+      p_primary_specialty: formData.primary_specialty || null,
+      p_phone: formData.phone || null,
+      p_timezone: formData.timezone || "America/Chicago",
+    });
 
     if (error) {
       console.error("Error updating profile:", error);
-      toast.error("Failed to update profile");
+      toast.error("Failed to update profile", { description: error.message });
     } else {
       toast.success("Profile updated successfully");
     }
