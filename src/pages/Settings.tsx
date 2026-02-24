@@ -1,5 +1,4 @@
 import { useEffect, useState } from "react";
-import { useNavigate } from "react-router-dom";
 import { ProviderLayout } from "@/components/layout/ProviderLayout";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -40,9 +39,8 @@ const timezones = [
 
 
 export default function Settings() {
-  const { user, profile, isLoading: authLoading } = useAuth();
+  const { user, profile } = useAuth();
   const { isDemoMode, enableDemo, disableDemo } = useDemoMode();
-  const navigate = useNavigate();
   const [isLoading, setIsLoading] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
   const [formData, setFormData] = useState<ProfileData>({
@@ -53,12 +51,6 @@ export default function Settings() {
     phone: "",
     timezone: "America/Chicago",
   });
-
-  useEffect(() => {
-    if (!authLoading && !user) {
-      navigate("/auth");
-    }
-  }, [user, authLoading, navigate]);
 
   useEffect(() => {
     if (profile) {
@@ -100,16 +92,6 @@ export default function Settings() {
     }
     setIsSaving(false);
   };
-
-  if (authLoading) {
-    return (
-      <ProviderLayout>
-        <div className="flex items-center justify-center min-h-[400px]">
-          <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />
-        </div>
-      </ProviderLayout>
-    );
-  }
 
   return (
     <ProviderLayout>

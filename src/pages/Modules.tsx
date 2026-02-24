@@ -1,5 +1,5 @@
 import { useState, useEffect } from "react";
-import { Link, useNavigate } from "react-router-dom";
+import { Link } from "react-router-dom";
 import { ProviderLayout } from "@/components/layout/ProviderLayout";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -47,20 +47,13 @@ interface ConsentModule {
 }
 
 export default function Modules() {
-  const { user, isLoading: authLoading } = useAuth();
-  const navigate = useNavigate();
+  const { user } = useAuth();
   const [modules, setModules] = useState<ConsentModule[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [searchQuery, setSearchQuery] = useState("");
   const [filter, setFilter] = useState<"all" | "video" | "text">("all");
   const [deleteModule, setDeleteModule] = useState<ConsentModule | null>(null);
   const [isDeleting, setIsDeleting] = useState(false);
-
-  useEffect(() => {
-    if (!authLoading && !user) {
-      navigate("/auth");
-    }
-  }, [user, authLoading, navigate]);
 
   useEffect(() => {
     if (user) {
@@ -147,7 +140,7 @@ export default function Modules() {
     return matchesSearch && matchesFilter;
   });
 
-  if (authLoading || isLoading) {
+  if (isLoading) {
     return (
       <ProviderLayout>
         <div className="flex items-center justify-center min-h-[400px]">

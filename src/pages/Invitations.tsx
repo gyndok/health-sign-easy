@@ -91,7 +91,7 @@ const statusConfig: Record<InviteStatus, { variant: "default" | "secondary" | "d
 };
 
 export default function Invitations() {
-  const { user, isLoading: authLoading } = useAuth();
+  const { user } = useAuth();
   const navigate = useNavigate();
   const [invitations, setInvitations] = useState<InviteWithModule[]>([]);
   const [isLoading, setIsLoading] = useState(true);
@@ -99,12 +99,6 @@ export default function Invitations() {
   const [statusFilter, setStatusFilter] = useState<InviteStatus | "all">("all");
   const [deleteInvite, setDeleteInvite] = useState<InviteWithModule | null>(null);
   const [isDeleting, setIsDeleting] = useState(false);
-
-  useEffect(() => {
-    if (!authLoading && !user) {
-      navigate("/auth");
-    }
-  }, [user, authLoading, navigate]);
 
   useEffect(() => {
     if (user) {
@@ -296,7 +290,7 @@ export default function Invitations() {
     return matchesSearch && matchesStatus;
   });
 
-  if (authLoading || isLoading) {
+  if (isLoading) {
     return (
       <ProviderLayout>
         <div className="flex items-center justify-center min-h-[400px]">
