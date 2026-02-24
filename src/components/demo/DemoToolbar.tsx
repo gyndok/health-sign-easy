@@ -1,12 +1,27 @@
+import { useState, useEffect } from "react";
 import { useNavigate, useLocation } from "react-router-dom";
 import { useDemoMode } from "@/hooks/useDemoMode";
+import { useDemoTour } from "@/hooks/useDemoTour";
 import { Button } from "@/components/ui/button";
-import { Monitor, User, X, Play } from "lucide-react";
+import { Monitor, User, X, Play, HelpCircle, Database, Loader2 } from "lucide-react";
+import { seedDemoData, hasDemoData } from "@/services/demoSeedService";
+import { toast } from "sonner";
 
 export function DemoToolbar() {
   const { isDemoMode, demoView, setDemoView, disableDemo } = useDemoMode();
+  const { startTour, isActive: isTourActive } = useDemoTour();
   const navigate = useNavigate();
   const location = useLocation();
+  const [demoDataExists, setDemoDataExists] = useState<boolean | null>(null);
+  const [isSeeding, setIsSeeding] = useState(false);
+
+  const isOnDashboard = location.pathname === "/dashboard";
+
+  useEffect(() => {
+    if (isDemoMode) {
+      hasDemoData().then(setDemoDataExists);
+    }
+  }, [isDemoMode, location.pathname]);
 
   if (!isDemoMode) return null;
 
@@ -25,6 +40,34 @@ export function DemoToolbar() {
   const handleExit = () => {
     disableDemo();
     navigate("/settings");
+  };
+
+  const handleSeedData = async () => {
+    setIsSeeding(true);
+    try {
+      const result = await seedDemoData();
+      if (result.status === "already_seeded") {
+        toast.info("Demo data is already loaded");
+      } else {
+        toast.success("Demo data populated!");
+      }
+      setDemoDataExists(true);
+      if (!isOnDashboard) {
+        navigate("/dashboard");
+      }
+    } catch (error) {
+      console.error("Error seeding:", error);
+      toast.error("Failed to populate demo data");
+    }
+    setIsSeeding(false);
+  };
+
+  const handleStartTour = () => {
+    if (!isOnDashboard) {
+      navigate("/dashboard?tour=start");
+    } else {
+      startTour();
+    }
   };
 
   return (
@@ -55,6 +98,37 @@ export function DemoToolbar() {
         <User className="h-3.5 w-3.5" />
         Patient
       </Button>
+
+      <div className="h-5 w-px bg-border" />
+
+      {demoDataExists === false && (
+        <Button
+          size="sm"
+          variant="ghost"
+          className="h-8 gap-1.5 text-xs rounded-full"
+          onClick={handleSeedData}
+          disabled={isSeeding}
+        >
+          {isSeeding ? (
+            <Loader2 className="h-3.5 w-3.5 animate-spin" />
+          ) : (
+            <Database className="h-3.5 w-3.5" />
+          )}
+          Seed Data
+        </Button>
+      )}
+
+      {!isTourActive && (
+        <Button
+          size="sm"
+          variant="ghost"
+          className="h-8 gap-1.5 text-xs rounded-full"
+          onClick={handleStartTour}
+        >
+          <HelpCircle className="h-3.5 w-3.5" />
+          Tour
+        </Button>
+      )}
 
       <div className="h-5 w-px bg-border" />
 
