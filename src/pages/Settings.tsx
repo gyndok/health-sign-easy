@@ -7,9 +7,10 @@ import { Label } from "@/components/ui/label";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Separator } from "@/components/ui/separator";
 import { useAuth } from "@/hooks/useAuth";
+import { useProviderProfile } from "@/hooks/useProviderProfile";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
-import { Loader2, Save, User, Building, Phone, Mail, Clock, Play, Database, Trash2, CheckCircle2 } from "lucide-react";
+import { Loader2, Save, User, Building, Phone, Mail, Clock, Play, Database, Trash2, CheckCircle2, Shield, Stethoscope } from "lucide-react";
 import { Switch } from "@/components/ui/switch";
 import { useDemoMode } from "@/hooks/useDemoMode";
 import { seedDemoData, clearDemoData, hasDemoData } from "@/services/demoSeedService";
@@ -20,6 +21,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
+import { MEDICAL_SPECIALTIES, US_STATES, TIMEZONES, CONSENT_EXPIRY_OPTIONS } from "@/constants/specialties";
 
 interface ProfileData {
   full_name: string;
@@ -28,23 +30,22 @@ interface ProfileData {
   primary_specialty: string;
   phone: string;
   timezone: string;
+  npi_number: string;
+  license_number: string;
+  license_state: string;
+  practice_address: string;
+  practice_city: string;
+  practice_state: string;
+  practice_zip: string;
+  default_consent_expiry_days: number;
 }
-
-const timezones = [
-  { value: "America/New_York", label: "Eastern Time (ET)" },
-  { value: "America/Chicago", label: "Central Time (CT)" },
-  { value: "America/Denver", label: "Mountain Time (MT)" },
-  { value: "America/Los_Angeles", label: "Pacific Time (PT)" },
-  { value: "America/Anchorage", label: "Alaska Time (AKT)" },
-  { value: "Pacific/Honolulu", label: "Hawaii Time (HT)" },
-];
 
 
 export default function Settings() {
   const { user, profile } = useAuth();
+  const { providerProfile, refreshProviderProfile } = useProviderProfile();
   const { isDemoMode, enableDemo, disableDemo } = useDemoMode();
   const navigate = useNavigate();
-  const [isLoading, setIsLoading] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
   const [isSeeding, setIsSeeding] = useState(false);
   const [isClearing, setIsClearing] = useState(false);
@@ -56,6 +57,14 @@ export default function Settings() {
     primary_specialty: "",
     phone: "",
     timezone: "America/Chicago",
+    npi_number: "",
+    license_number: "",
+    license_state: "",
+    practice_address: "",
+    practice_city: "",
+    practice_state: "",
+    practice_zip: "",
+    default_consent_expiry_days: 7,
   });
 
   useEffect(() => {
@@ -64,20 +73,44 @@ export default function Settings() {
     }
   }, [isDemoMode]);
 
+  // Populate from user_profiles (basic fields)
   useEffect(() => {
     if (profile) {
-      setFormData({
+      setFormData((prev) => ({
+        ...prev,
         full_name: profile.full_name || "",
         email: user?.email || profile.email || "",
-        practice_name: profile.practice_name || "",
-        primary_specialty: profile.primary_specialty || "",
-        phone: profile.phone || "",
-        timezone: profile.timezone || "America/Chicago",
-      });
+        phone: profile.phone || prev.phone || "",
+        practice_name: profile.practice_name || prev.practice_name || "",
+        primary_specialty: profile.primary_specialty || prev.primary_specialty || "",
+        timezone: profile.timezone || prev.timezone || "America/Chicago",
+      }));
     }
   }, [profile]);
 
-  const handleInputChange = (field: keyof ProfileData, value: string) => {
+  // Populate from provider_profiles (extended fields)
+  useEffect(() => {
+    if (providerProfile) {
+      setFormData((prev) => ({
+        ...prev,
+        full_name: providerProfile.full_name || prev.full_name,
+        phone: providerProfile.phone || prev.phone,
+        practice_name: providerProfile.practice_name || prev.practice_name,
+        primary_specialty: providerProfile.primary_specialty || prev.primary_specialty,
+        timezone: providerProfile.timezone || prev.timezone,
+        npi_number: providerProfile.npi_number || "",
+        license_number: providerProfile.license_number || "",
+        license_state: providerProfile.license_state || "",
+        practice_address: providerProfile.practice_address || "",
+        practice_city: providerProfile.practice_city || "",
+        practice_state: providerProfile.practice_state || "",
+        practice_zip: providerProfile.practice_zip || "",
+        default_consent_expiry_days: providerProfile.default_consent_expiry_days || 7,
+      }));
+    }
+  }, [providerProfile]);
+
+  const handleInputChange = (field: keyof ProfileData, value: string | number) => {
     setFormData((prev) => ({ ...prev, [field]: value }));
   };
 
@@ -125,6 +158,14 @@ export default function Settings() {
       p_primary_specialty: formData.primary_specialty || null,
       p_phone: formData.phone || null,
       p_timezone: formData.timezone || "America/Chicago",
+      p_npi_number: formData.npi_number || null,
+      p_license_number: formData.license_number || null,
+      p_license_state: formData.license_state || null,
+      p_practice_address: formData.practice_address || null,
+      p_practice_city: formData.practice_city || null,
+      p_practice_state: formData.practice_state || null,
+      p_practice_zip: formData.practice_zip || null,
+      p_default_consent_expiry_days: formData.default_consent_expiry_days,
     });
 
     if (error) {
@@ -136,6 +177,7 @@ export default function Settings() {
         toast.error("Profile not found", { description: "Your user profile row could not be located. Please contact support." });
       } else {
         toast.success("Profile updated successfully");
+        refreshProviderProfile();
       }
     }
     setIsSaving(false);
@@ -207,6 +249,81 @@ export default function Settings() {
           </CardContent>
         </Card>
 
+        {/* Professional Credentials */}
+        <Card>
+          <CardHeader>
+            <CardTitle className="flex items-center gap-2">
+              <Stethoscope className="h-5 w-5" />
+              Professional Credentials
+            </CardTitle>
+            <CardDescription>
+              Your medical licensing and certification details
+            </CardDescription>
+          </CardHeader>
+          <CardContent className="space-y-6">
+            <div className="space-y-2">
+              <Label htmlFor="npi_number">NPI Number</Label>
+              <Input
+                id="npi_number"
+                value={formData.npi_number}
+                onChange={(e) => handleInputChange("npi_number", e.target.value)}
+                placeholder="1234567890"
+                maxLength={10}
+              />
+              <p className="text-xs text-muted-foreground">
+                10-digit National Provider Identifier
+              </p>
+            </div>
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+              <div className="space-y-2">
+                <Label htmlFor="license_number">License Number</Label>
+                <Input
+                  id="license_number"
+                  value={formData.license_number}
+                  onChange={(e) => handleInputChange("license_number", e.target.value)}
+                  placeholder="MD-12345"
+                />
+              </div>
+              <div className="space-y-2">
+                <Label htmlFor="license_state">License State</Label>
+                <Select
+                  value={formData.license_state}
+                  onValueChange={(value) => handleInputChange("license_state", value)}
+                >
+                  <SelectTrigger>
+                    <SelectValue placeholder="Select state" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {US_STATES.map((state) => (
+                      <SelectItem key={state.value} value={state.value}>
+                        {state.label}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+            </div>
+            <div className="space-y-2">
+              <Label htmlFor="primary_specialty">Primary Specialty</Label>
+              <Select
+                value={formData.primary_specialty}
+                onValueChange={(value) => handleInputChange("primary_specialty", value)}
+              >
+                <SelectTrigger>
+                  <SelectValue placeholder="Select specialty" />
+                </SelectTrigger>
+                <SelectContent>
+                  {MEDICAL_SPECIALTIES.map((specialty) => (
+                    <SelectItem key={specialty} value={specialty}>
+                      {specialty}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+          </CardContent>
+        </Card>
+
         {/* Practice Settings */}
         <Card>
           <CardHeader>
@@ -230,13 +347,53 @@ export default function Settings() {
             </div>
 
             <div className="space-y-2">
-              <Label htmlFor="primary_specialty">Primary Specialty</Label>
+              <Label htmlFor="practice_address">Street Address</Label>
               <Input
-                id="primary_specialty"
-                value={formData.primary_specialty}
-                onChange={(e) => handleInputChange("primary_specialty", e.target.value)}
-                placeholder="e.g., Dermatology, Plastic Surgery"
+                id="practice_address"
+                value={formData.practice_address}
+                onChange={(e) => handleInputChange("practice_address", e.target.value)}
+                placeholder="123 Medical Center Dr"
               />
+            </div>
+
+            <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
+              <div className="space-y-2 col-span-2 sm:col-span-1">
+                <Label htmlFor="practice_city">City</Label>
+                <Input
+                  id="practice_city"
+                  value={formData.practice_city}
+                  onChange={(e) => handleInputChange("practice_city", e.target.value)}
+                  placeholder="Austin"
+                />
+              </div>
+              <div className="space-y-2">
+                <Label htmlFor="practice_state">State</Label>
+                <Select
+                  value={formData.practice_state}
+                  onValueChange={(value) => handleInputChange("practice_state", value)}
+                >
+                  <SelectTrigger>
+                    <SelectValue placeholder="State" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {US_STATES.map((state) => (
+                      <SelectItem key={state.value} value={state.value}>
+                        {state.value}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+              <div className="space-y-2">
+                <Label htmlFor="practice_zip">ZIP</Label>
+                <Input
+                  id="practice_zip"
+                  value={formData.practice_zip}
+                  onChange={(e) => handleInputChange("practice_zip", e.target.value)}
+                  placeholder="78701"
+                  maxLength={10}
+                />
+              </div>
             </div>
           </CardContent>
         </Card>
@@ -263,13 +420,34 @@ export default function Settings() {
                   <SelectValue placeholder="Select timezone" />
                 </SelectTrigger>
                 <SelectContent>
-                  {timezones.map((tz) => (
+                  {TIMEZONES.map((tz) => (
                     <SelectItem key={tz.value} value={tz.value}>
                       {tz.label}
                     </SelectItem>
                   ))}
                 </SelectContent>
               </Select>
+            </div>
+            <div className="space-y-2">
+              <Label htmlFor="consent_expiry">Default Consent Expiry</Label>
+              <Select
+                value={String(formData.default_consent_expiry_days)}
+                onValueChange={(value) => handleInputChange("default_consent_expiry_days", parseInt(value))}
+              >
+                <SelectTrigger>
+                  <SelectValue placeholder="Select expiry period" />
+                </SelectTrigger>
+                <SelectContent>
+                  {CONSENT_EXPIRY_OPTIONS.map((opt) => (
+                    <SelectItem key={opt.value} value={String(opt.value)}>
+                      {opt.label}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+              <p className="text-xs text-muted-foreground">
+                How long patients have to complete consent forms before they expire
+              </p>
             </div>
           </CardContent>
         </Card>

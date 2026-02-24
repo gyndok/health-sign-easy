@@ -1,4 +1,4 @@
-import { Navigate } from "react-router-dom";
+import { Navigate, useLocation } from "react-router-dom";
 import { useAuth } from "@/hooks/useAuth";
 import { Loader2 } from "lucide-react";
 
@@ -8,7 +8,8 @@ interface ProtectedRouteProps {
 }
 
 export function ProtectedRoute({ children, allowedRoles }: ProtectedRouteProps) {
-  const { user, role, isLoading } = useAuth();
+  const { user, role, profile, isLoading } = useAuth();
+  const location = useLocation();
 
   if (isLoading) {
     return (
@@ -20,6 +21,14 @@ export function ProtectedRoute({ children, allowedRoles }: ProtectedRouteProps) 
 
   if (!user) {
     return <Navigate to="/auth" replace />;
+  }
+
+  // Onboarding redirect: if profile exists but onboarding not completed,
+  // redirect to onboarding (unless already on an onboarding page)
+  const isOnboardingPage = location.pathname.startsWith("/onboarding");
+  if (profile && !profile.onboarding_completed_at && !isOnboardingPage) {
+    const onboardingPath = role === "patient" ? "/onboarding/patient" : "/onboarding/provider";
+    return <Navigate to={onboardingPath} replace />;
   }
 
   if (allowedRoles && allowedRoles.length > 0 && role && !allowedRoles.includes(role)) {
