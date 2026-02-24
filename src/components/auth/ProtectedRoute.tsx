@@ -8,9 +8,10 @@ interface ProtectedRouteProps {
 }
 
 export function ProtectedRoute({ children, allowedRoles }: ProtectedRouteProps) {
-  const { user, role, profile, isLoading } = useAuth();
+  const { user, role, profile, isLoading, profileLoaded } = useAuth();
   const location = useLocation();
 
+  // Wait for initial auth check
   if (isLoading) {
     return (
       <div className="min-h-screen flex items-center justify-center bg-background">
@@ -23,10 +24,19 @@ export function ProtectedRoute({ children, allowedRoles }: ProtectedRouteProps) 
     return <Navigate to="/auth" replace />;
   }
 
-  // Onboarding redirect: if profile exists but onboarding not completed,
+  // Wait for profile to load after authentication before making routing decisions
+  if (!profileLoaded) {
+    return (
+      <div className="min-h-screen flex items-center justify-center bg-background">
+        <Loader2 className="h-8 w-8 animate-spin text-muted-foreground" />
+      </div>
+    );
+  }
+
+  // Onboarding redirect: if profile has no onboarding_completed_at,
   // redirect to onboarding (unless already on an onboarding page)
   const isOnboardingPage = location.pathname.startsWith("/onboarding");
-  if (profile && !profile.onboarding_completed_at && !isOnboardingPage) {
+  if (!isOnboardingPage && (!profile || !profile.onboarding_completed_at)) {
     const onboardingPath = role === "patient" ? "/onboarding/patient" : "/onboarding/provider";
     return <Navigate to={onboardingPath} replace />;
   }
