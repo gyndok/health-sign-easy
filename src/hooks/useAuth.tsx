@@ -13,6 +13,7 @@ interface AuthContextType {
   organization: Organization | null;
   role: "provider" | "patient" | "org_admin" | "super_admin" | null;
   isLoading: boolean;
+  profileLoaded: boolean;
   signIn: (email: string, password: string) => Promise<{ error: Error | null }>;
   signUp: (email: string, password: string, fullName: string, role: "provider" | "patient") => Promise<{ error: Error | null }>;
   signOut: () => Promise<void>;
@@ -28,8 +29,10 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const [organization, setOrganization] = useState<Organization | null>(null);
   const [role, setRole] = useState<"provider" | "patient" | "org_admin" | "super_admin" | null>(null);
   const [isLoading, setIsLoading] = useState(true);
+  const [profileLoaded, setProfileLoaded] = useState(false);
 
   const fetchProfile = async (userId: string) => {
+    setProfileLoaded(false);
     // Fetch user profile including org_id and role
     const { data: profileData, error: profileError } = await supabase
       .from("user_profiles")
@@ -42,6 +45,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       setProfile(null);
       setRole(null);
       setOrganization(null);
+      setProfileLoaded(true);
       return;
     }
 
@@ -62,6 +66,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         }
       }
     }
+    setProfileLoaded(true);
   };
 
   useEffect(() => {
@@ -138,17 +143,18 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   };
 
   return (
-    <AuthContext.Provider value={{ 
-      user, 
-      session, 
-      profile, 
+    <AuthContext.Provider value={{
+      user,
+      session,
+      profile,
       organization,
-      role, 
-      isLoading, 
-      signIn, 
-      signUp, 
+      role,
+      isLoading,
+      profileLoaded,
+      signIn,
+      signUp,
       signOut,
-      refreshProfile 
+      refreshProfile
     }}>
       {children}
     </AuthContext.Provider>

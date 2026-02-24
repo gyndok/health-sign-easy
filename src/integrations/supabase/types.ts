@@ -489,6 +489,7 @@ export type Database = {
           first_name: string
           id: string
           last_name: string
+          onboarding_completed_at: string | null
           phone: string | null
           preferred_contact: string | null
           updated_at: string
@@ -501,6 +502,7 @@ export type Database = {
           first_name: string
           id?: string
           last_name: string
+          onboarding_completed_at?: string | null
           phone?: string | null
           preferred_contact?: string | null
           updated_at?: string
@@ -513,6 +515,7 @@ export type Database = {
           first_name?: string
           id?: string
           last_name?: string
+          onboarding_completed_at?: string | null
           phone?: string | null
           preferred_contact?: string | null
           updated_at?: string
@@ -523,11 +526,20 @@ export type Database = {
       provider_profiles: {
         Row: {
           created_at: string
+          default_consent_expiry_days: number | null
           email: string
           full_name: string
           id: string
+          license_number: string | null
+          license_state: string | null
+          npi_number: string | null
+          onboarding_completed_at: string | null
           phone: string | null
+          practice_address: string | null
+          practice_city: string | null
           practice_name: string | null
+          practice_state: string | null
+          practice_zip: string | null
           primary_specialty: string | null
           timezone: string | null
           updated_at: string
@@ -535,11 +547,20 @@ export type Database = {
         }
         Insert: {
           created_at?: string
+          default_consent_expiry_days?: number | null
           email: string
           full_name: string
           id?: string
+          license_number?: string | null
+          license_state?: string | null
+          npi_number?: string | null
+          onboarding_completed_at?: string | null
           phone?: string | null
+          practice_address?: string | null
+          practice_city?: string | null
           practice_name?: string | null
+          practice_state?: string | null
+          practice_zip?: string | null
           primary_specialty?: string | null
           timezone?: string | null
           updated_at?: string
@@ -547,11 +568,20 @@ export type Database = {
         }
         Update: {
           created_at?: string
+          default_consent_expiry_days?: number | null
           email?: string
           full_name?: string
           id?: string
+          license_number?: string | null
+          license_state?: string | null
+          npi_number?: string | null
+          onboarding_completed_at?: string | null
           phone?: string | null
+          practice_address?: string | null
+          practice_city?: string | null
           practice_name?: string | null
+          practice_state?: string | null
+          practice_zip?: string | null
           primary_specialty?: string | null
           timezone?: string | null
           updated_at?: string
@@ -638,6 +668,7 @@ export type Database = {
           id: string
           last_login_at: string | null
           mfa_enabled: boolean | null
+          onboarding_completed_at: string | null
           org_id: string
           phone: string | null
           practice_name: string | null
@@ -655,6 +686,7 @@ export type Database = {
           id: string
           last_login_at?: string | null
           mfa_enabled?: boolean | null
+          onboarding_completed_at?: string | null
           org_id: string
           phone?: string | null
           practice_name?: string | null
@@ -672,6 +704,7 @@ export type Database = {
           id?: string
           last_login_at?: string | null
           mfa_enabled?: boolean | null
+          onboarding_completed_at?: string | null
           org_id?: string
           phone?: string | null
           practice_name?: string | null
@@ -778,6 +811,47 @@ export type Database = {
           p_primary_specialty?: string | null
           p_phone?: string | null
           p_timezone?: string
+          p_npi_number?: string | null
+          p_license_number?: string | null
+          p_license_state?: string | null
+          p_practice_address?: string | null
+          p_practice_city?: string | null
+          p_practice_state?: string | null
+          p_practice_zip?: string | null
+          p_default_consent_expiry_days?: number
+        }
+        Returns: Json
+      }
+      save_provider_onboarding: {
+        Args: {
+          p_full_name?: string | null
+          p_phone?: string | null
+          p_npi_number?: string | null
+          p_license_number?: string | null
+          p_license_state?: string | null
+          p_primary_specialty?: string | null
+          p_practice_name?: string | null
+          p_practice_address?: string | null
+          p_practice_city?: string | null
+          p_practice_state?: string | null
+          p_practice_zip?: string | null
+          p_timezone?: string | null
+          p_default_consent_expiry_days?: number | null
+          p_mark_complete?: boolean
+        }
+        Returns: Json
+      }
+      save_patient_onboarding: {
+        Args: {
+          p_first_name?: string | null
+          p_last_name?: string | null
+          p_date_of_birth?: string | null
+          p_phone?: string | null
+          p_preferred_contact?: string | null
+          p_email_consent_reminders?: boolean
+          p_email_expiration_alerts?: boolean
+          p_email_provider_updates?: boolean
+          p_mark_complete?: boolean
         }
         Returns: Json
       }

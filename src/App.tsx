@@ -23,6 +23,8 @@ import Settings from "./pages/Settings";
 import Patients from "./pages/Patients";
 import Submissions from "./pages/Submissions";
 import DemoPatientView from "./pages/DemoPatientView";
+import ProviderOnboarding from "./pages/ProviderOnboarding";
+import PatientOnboarding from "./pages/PatientOnboarding";
 import NotFound from "./pages/NotFound";
 
 const queryClient = new QueryClient();
@@ -87,6 +89,18 @@ const App = () => (
                 <Route path="/submissions" element={
                   <ProtectedRoute allowedRoles={["provider", "org_admin", "super_admin"]}>
                     <Submissions />
+                  </ProtectedRoute>
+                } />
+
+                {/* Onboarding routes */}
+                <Route path="/onboarding/provider" element={
+                  <ProtectedRoute allowedRoles={["provider", "org_admin", "super_admin"]}>
+                    <ProviderOnboarding />
+                  </ProtectedRoute>
+                } />
+                <Route path="/onboarding/patient" element={
+                  <ProtectedRoute allowedRoles={["patient"]}>
+                    <PatientOnboarding />
                   </ProtectedRoute>
                 } />
 

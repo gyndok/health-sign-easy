@@ -10,6 +10,7 @@ import { Search, AlertTriangle } from "lucide-react";
 import { useAuth } from "@/hooks/useAuth";
 import { supabase } from "@/integrations/supabase/client";
 import { useDemoTour } from "@/hooks/useDemoTour";
+import { OnboardingBanner } from "@/components/onboarding/OnboardingBanner";
 
 interface DashboardStats {
   pendingConsents: number;
@@ -105,6 +106,7 @@ export default function Dashboard() {
   return (
     <ProviderLayout>
       <div className="space-y-8">
+        <OnboardingBanner />
         {/* Header */}
         <div data-tour="dashboard-header" className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
           <div>

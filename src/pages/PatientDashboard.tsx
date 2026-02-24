@@ -28,6 +28,7 @@ import {
 import { toast } from "sonner";
 import { useAuth } from "@/hooks/useAuth";
 import { supabase } from "@/integrations/supabase/client";
+import { PatientOnboardingBanner } from "@/components/onboarding/OnboardingBanner";
 import { format } from "date-fns";
 
 interface ConsentSubmission {
@@ -197,6 +198,7 @@ export default function PatientDashboard() {
       </header>
 
       <main className="container py-8 max-w-4xl">
+        <PatientOnboardingBanner />
         <div className="mb-8">
           <h1 className="text-2xl sm:text-3xl font-bold font-display mb-2">
             My Consent Forms
