@@ -58,7 +58,7 @@ interface NotificationPreferences {
 }
 
 export default function PatientSettings() {
-  const { user, isLoading: authLoading } = useAuth();
+  const { user } = useAuth();
   const navigate = useNavigate();
   
   // Profile state
@@ -89,12 +89,6 @@ export default function PatientSettings() {
   
   // Download data state
   const [isDownloading, setIsDownloading] = useState(false);
-
-  useEffect(() => {
-    if (!authLoading && !user) {
-      navigate("/auth");
-    }
-  }, [user, authLoading, navigate]);
 
   useEffect(() => {
     if (user) {
@@ -270,7 +264,7 @@ export default function PatientSettings() {
     setDeleteReason("");
   };
 
-  if (authLoading || isLoadingProfile) {
+  if (isLoadingProfile) {
     return (
       <div className="min-h-screen bg-background flex items-center justify-center">
         <Loader2 className="h-8 w-8 animate-spin text-muted-foreground" />

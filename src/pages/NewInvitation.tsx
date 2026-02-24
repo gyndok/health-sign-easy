@@ -20,7 +20,7 @@ import { Tables } from "@/integrations/supabase/types";
 
 export default function NewInvitation() {
   const navigate = useNavigate();
-  const { user, profile, isLoading: authLoading } = useAuth();
+  const { user, profile } = useAuth();
 
   const [modules, setModules] = useState<Tables<"consent_modules">[]>([]);
   const [isLoadingModules, setIsLoadingModules] = useState(true);
@@ -28,12 +28,6 @@ export default function NewInvitation() {
   const [selectedModule, setSelectedModule] = useState("");
   const [customMessage, setCustomMessage] = useState("");
   const [isSubmitting, setIsSubmitting] = useState(false);
-
-  useEffect(() => {
-    if (!authLoading && !user) {
-      navigate("/auth");
-    }
-  }, [user, authLoading, navigate]);
 
   useEffect(() => {
     if (user) {
@@ -153,7 +147,7 @@ export default function NewInvitation() {
     navigate("/invitations");
   };
 
-  if (authLoading || isLoadingModules) {
+  if (isLoadingModules) {
     return (
       <ProviderLayout>
         <div className="flex items-center justify-center min-h-[400px]">

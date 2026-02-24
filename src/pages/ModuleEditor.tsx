@@ -25,7 +25,7 @@ import { supabase } from "@/integrations/supabase/client";
 export default function ModuleEditor() {
   const { id } = useParams();
   const navigate = useNavigate();
-  const { user, profile, isLoading: authLoading } = useAuth();
+  const { user, profile } = useAuth();
   
   const [name, setName] = useState("");
   const [description, setDescription] = useState("");
@@ -39,12 +39,6 @@ export default function ModuleEditor() {
   const [procedureContext, setProcedureContext] = useState("");
 
   const isEditing = !!id;
-
-  useEffect(() => {
-    if (!authLoading && !user) {
-      navigate("/auth");
-    }
-  }, [user, authLoading, navigate]);
 
   useEffect(() => {
     if (isEditing && user) {
@@ -195,7 +189,7 @@ export default function ModuleEditor() {
 
   const embedUrl = getVideoEmbedUrl(videoUrl);
 
-  if (authLoading || isLoading) {
+  if (isLoading) {
     return (
       <ProviderLayout>
         <div className="flex items-center justify-center min-h-[400px]">

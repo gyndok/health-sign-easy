@@ -1,5 +1,4 @@
 import { useState, useEffect } from "react";
-import { useNavigate } from "react-router-dom";
 import { useAuth } from "@/hooks/useAuth";
 import { supabase } from "@/integrations/supabase/client";
 import { ProviderLayout } from "@/components/layout/ProviderLayout";
@@ -19,17 +18,10 @@ interface Patient {
 }
 
 const Patients = () => {
-  const { user, isLoading: authLoading } = useAuth();
-  const navigate = useNavigate();
+  const { user } = useAuth();
   const [patients, setPatients] = useState<Patient[]>([]);
   const [loading, setLoading] = useState(true);
   const [searchQuery, setSearchQuery] = useState("");
-
-  useEffect(() => {
-    if (!authLoading && !user) {
-      navigate("/auth");
-    }
-  }, [user, authLoading, navigate]);
 
   useEffect(() => {
     if (user) {
@@ -92,14 +84,6 @@ const Patients = () => {
       patient.last_name.toLowerCase().includes(query)
     );
   });
-
-  if (authLoading) {
-    return (
-      <div className="flex min-h-screen items-center justify-center">
-        <div className="h-8 w-8 animate-spin rounded-full border-4 border-primary border-t-transparent" />
-      </div>
-    );
-  }
 
   return (
     <ProviderLayout>

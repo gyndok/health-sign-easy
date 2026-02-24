@@ -1,5 +1,4 @@
 import { useEffect, useState } from "react";
-import { useNavigate } from "react-router-dom";
 import { ProviderLayout } from "@/components/layout/ProviderLayout";
 import { StatCard, FileText, Users, Clock, CheckCircle2 } from "@/components/dashboard/StatCard";
 import { RecentSubmissionsTable } from "@/components/dashboard/RecentSubmissionsTable";
@@ -19,8 +18,7 @@ interface DashboardStats {
 }
 
 export default function Dashboard() {
-  const { user, profile, isLoading } = useAuth();
-  const navigate = useNavigate();
+  const { user, profile } = useAuth();
   const [searchQuery, setSearchQuery] = useState("");
   const [stats, setStats] = useState<DashboardStats>({
     pendingConsents: 0,
@@ -29,12 +27,6 @@ export default function Dashboard() {
     totalPatients: 0,
     withdrawalsCount: 0,
   });
-
-  useEffect(() => {
-    if (!isLoading && !user) {
-      navigate("/auth");
-    }
-  }, [user, isLoading, navigate]);
 
   useEffect(() => {
     if (user) {
@@ -92,16 +84,6 @@ export default function Dashboard() {
       withdrawalsCount: withdrawalsData?.length || 0,
     });
   };
-
-  if (isLoading) {
-    return (
-      <ProviderLayout>
-        <div className="flex items-center justify-center min-h-[400px]">
-          <div className="animate-pulse text-muted-foreground">Loading...</div>
-        </div>
-      </ProviderLayout>
-    );
-  }
 
   const displayName = profile?.full_name || user?.email?.split("@")[0] || "Provider";
 

@@ -1,5 +1,4 @@
 import { useEffect, useState } from "react";
-import { useNavigate } from "react-router-dom";
 import { ProviderLayout } from "@/components/layout/ProviderLayout";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -40,9 +39,8 @@ const timezones = [
 
 
 export default function Settings() {
-  const { user, profile, isLoading: authLoading } = useAuth();
+  const { user, profile } = useAuth();
   const { isDemoMode, enableDemo, disableDemo } = useDemoMode();
-  const navigate = useNavigate();
   const [isLoading, setIsLoading] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
   const [formData, setFormData] = useState<ProfileData>({
@@ -55,16 +53,10 @@ export default function Settings() {
   });
 
   useEffect(() => {
-    if (!authLoading && !user) {
-      navigate("/auth");
-    }
-  }, [user, authLoading, navigate]);
-
-  useEffect(() => {
     if (profile) {
       setFormData({
         full_name: profile.full_name || "",
-        email: profile.email || "",
+        email: user?.email || profile.email || "",
         practice_name: profile.practice_name || "",
         primary_specialty: profile.primary_specialty || "",
         phone: profile.phone || "",
@@ -82,7 +74,7 @@ export default function Settings() {
 
     setIsSaving(true);
     const { error } = await supabase
-      .from("provider_profiles")
+      .from("user_profiles")
       .update({
         full_name: formData.full_name,
         practice_name: formData.practice_name || null,
@@ -90,7 +82,7 @@ export default function Settings() {
         phone: formData.phone || null,
         timezone: formData.timezone,
       })
-      .eq("user_id", user.id);
+      .eq("id", user.id);
 
     if (error) {
       console.error("Error updating profile:", error);
@@ -100,16 +92,6 @@ export default function Settings() {
     }
     setIsSaving(false);
   };
-
-  if (authLoading) {
-    return (
-      <ProviderLayout>
-        <div className="flex items-center justify-center min-h-[400px]">
-          <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />
-        </div>
-      </ProviderLayout>
-    );
-  }
 
   return (
     <ProviderLayout>

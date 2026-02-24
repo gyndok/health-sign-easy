@@ -50,7 +50,7 @@ interface ConsentSubmission {
 }
 
 export default function PatientDashboard() {
-  const { user, isLoading: authLoading, signOut } = useAuth();
+  const { user, signOut } = useAuth();
   const navigate = useNavigate();
   const [submissions, setSubmissions] = useState<ConsentSubmission[]>([]);
   const [isLoading, setIsLoading] = useState(true);
@@ -59,12 +59,6 @@ export default function PatientDashboard() {
   const [withdrawReason, setWithdrawReason] = useState("");
   const [isWithdrawing, setIsWithdrawing] = useState(false);
   const [viewMaterialsOpen, setViewMaterialsOpen] = useState(false);
-
-  useEffect(() => {
-    if (!authLoading && !user) {
-      navigate("/auth");
-    }
-  }, [user, authLoading, navigate]);
 
   useEffect(() => {
     if (user) {
@@ -171,7 +165,7 @@ export default function PatientDashboard() {
   const isWithdrawn = (submission: ConsentSubmission) => 
     submission.consent_withdrawals && submission.consent_withdrawals.length > 0;
 
-  if (authLoading || isLoading) {
+  if (isLoading) {
     return (
       <div className="min-h-screen bg-background flex items-center justify-center">
         <Loader2 className="h-8 w-8 animate-spin text-muted-foreground" />

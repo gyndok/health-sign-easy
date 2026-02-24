@@ -4,5 +4,8 @@
   "outputDirectory": "dist",
   "installCommand": "npm install",
   "devCommand": "vite",
-  "regions": ["iad1"]
+  "regions": ["iad1"],
+  "rewrites": [
+    { "source": "/(.*)", "destination": "/index.html" }
+  ]
 }
