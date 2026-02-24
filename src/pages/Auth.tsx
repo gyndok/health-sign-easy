@@ -95,6 +95,7 @@ export default function Auth() {
         }
         toast.success("Welcome back!");
         // Don't navigate here - let the useEffect handle redirect based on role
+        setIsLoading(false);
       } else {
         const { error } = await signUp(email, password, fullName, selectedRole);
         if (error) {
