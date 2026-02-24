@@ -822,6 +822,10 @@ export type Database = {
         }
         Returns: Json
       }
+      get_my_profile: {
+        Args: Record<string, never>
+        Returns: Json
+      }
       save_provider_onboarding: {
         Args: {
           p_full_name?: string | null

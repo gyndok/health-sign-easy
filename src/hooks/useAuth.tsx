@@ -31,17 +31,14 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const [isLoading, setIsLoading] = useState(true);
   const [profileLoaded, setProfileLoaded] = useState(false);
 
-  const fetchProfile = async (userId: string) => {
+  const fetchProfile = async (_userId: string) => {
     setProfileLoaded(false);
-    // Fetch user profile including org_id and role
-    const { data: profileData, error: profileError } = await supabase
-      .from("user_profiles")
-      .select("*")
-      .eq("id", userId)
-      .single();
+    // Use SECURITY DEFINER RPC to bypass the recursive RLS policy (42P17)
+    // on user_profiles. Direct .from("user_profiles") queries fail for all users.
+    const { data, error } = await supabase.rpc("get_my_profile");
 
-    if (profileError) {
-      console.error("Failed to fetch user profile:", profileError);
+    if (error) {
+      console.error("Failed to fetch profile via RPC:", error);
       setProfile(null);
       setRole(null);
       setOrganization(null);
@@ -49,22 +46,18 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       return;
     }
 
+    const result = data as { profile: UserProfile | null; organization: Organization | null } | null;
+    const profileData = result?.profile ?? null;
+    const orgData = result?.organization ?? null;
+
     if (profileData) {
       setProfile(profileData);
       setRole(profileData.role as "provider" | "patient" | "org_admin" | "super_admin");
-
-      // Fetch organization if org_id exists
-      if (profileData.org_id) {
-        const { data: orgData } = await supabase
-          .from("organizations")
-          .select("*")
-          .eq("id", profileData.org_id)
-          .single();
-
-        if (orgData) {
-          setOrganization(orgData);
-        }
-      }
+      setOrganization(orgData);
+    } else {
+      setProfile(null);
+      setRole(null);
+      setOrganization(null);
     }
     setProfileLoaded(true);
   };
