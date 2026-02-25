@@ -5,6 +5,7 @@ import { StatCard, FileText, Users, Clock, CheckCircle2 } from "@/components/das
 import { RecentSubmissionsTable } from "@/components/dashboard/RecentSubmissionsTable";
 import { RecentWithdrawals } from "@/components/dashboard/RecentWithdrawals";
 import { QuickActions } from "@/components/dashboard/QuickActions";
+import { ConsentTrendChart } from "@/components/dashboard/ConsentTrendChart";
 import { Input } from "@/components/ui/input";
 import { Search, AlertTriangle, MessageCircle } from "lucide-react";
 import { useAuth } from "@/hooks/useAuth";
@@ -181,6 +182,9 @@ export default function Dashboard() {
             variant={stats.withdrawalsCount > 0 ? "warning" : "default"}
           />
         </div>
+
+        {/* Trend Chart */}
+        <ConsentTrendChart />
 
         {/* Main Content */}
         <div className="grid grid-cols-1 lg:grid-cols-4 gap-6">
