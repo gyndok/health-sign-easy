@@ -1,6 +1,7 @@
 import { Link } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { Shield } from "lucide-react";
+import { ThemeToggle } from "@/components/ui/theme-toggle";
 import { MVPBanner } from "@/components/landing/MVPBanner";
 import { HeroSection } from "@/components/landing/HeroSection";
 import { ProductPreview } from "@/components/landing/ProductPreview";
@@ -24,6 +25,7 @@ export default function Index() {
             <span className="font-display text-xl font-bold">ClearConsent</span>
           </Link>
           <div className="flex items-center gap-3">
+            <ThemeToggle />
             <Button variant="ghost" asChild>
               <Link to="/auth">Sign In</Link>
             </Button>

@@ -15,6 +15,7 @@ import {
 import { useState } from "react";
 import { useAuth } from "@/hooks/useAuth";
 import { toast } from "sonner";
+import { ThemeToggle } from "@/components/ui/theme-toggle";
 
 interface NavItem {
   label: string;
@@ -95,6 +96,7 @@ export function ProviderNav() {
 
         {/* User Actions */}
         <div className="hidden md:flex items-center gap-3">
+          <ThemeToggle />
           <div className="flex items-center gap-2 px-3 py-1.5 rounded-full bg-secondary">
             <div className="h-7 w-7 rounded-full bg-primary/10 flex items-center justify-center">
               <span className="text-xs font-medium text-primary">{getInitials()}</span>

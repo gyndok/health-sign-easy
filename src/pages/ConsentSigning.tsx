@@ -929,6 +929,14 @@ export default function ConsentSigning() {
         </div>
       </main>
 
+      {/* Secured by ClearConsent footer */}
+      <footer className="border-t border-border mt-12 py-4">
+        <div className="container flex items-center justify-center gap-2 text-xs text-muted-foreground">
+          <Shield className="h-3.5 w-3.5" />
+          <span>Secured by ClearConsent &middot; HIPAA Compliant</span>
+        </div>
+      </footer>
+
       {/* Chat FAB on consent form */}
       {token && invite && (
         <PatientChatSheet
