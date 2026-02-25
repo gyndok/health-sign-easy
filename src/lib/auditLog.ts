@@ -11,7 +11,7 @@ export async function logAuditEvent(
   details?: Record<string, unknown>
 ): Promise<void> {
   try {
-    await supabase.rpc("log_audit_event" as any, {
+    await supabase.rpc("log_audit_event", {
       p_action: action,
       p_resource_type: resourceType,
       p_resource_id: resourceId,

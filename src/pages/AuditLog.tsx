@@ -112,7 +112,7 @@ export default function AuditLog() {
     }
 
     const { data, error } = await supabase.rpc(
-      "get_audit_log_entries" as any,
+      "get_audit_log_entries",
       params
     );
 
