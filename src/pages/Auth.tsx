@@ -1,11 +1,12 @@
 import { useState, useEffect } from "react";
-import { useNavigate } from "react-router-dom";
+import { useNavigate, useSearchParams } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Shield, ArrowRight, Mail, Lock, User, Loader2, AlertCircle } from "lucide-react";
 import { toast } from "sonner";
 import { useAuth } from "@/hooks/useAuth";
+import { validatePasswordStrength, passwordRules } from "@/lib/passwordValidation";
 
 type AuthMode = "login" | "signup";
 type UserRole = "provider" | "patient";
@@ -16,9 +17,46 @@ interface FormErrors {
   fullName?: string;
 }
 
+function PasswordStrengthIndicator({ password }: { password: string }) {
+  const result = validatePasswordStrength(password);
+  const colorMap = { weak: "bg-destructive", fair: "bg-warning", strong: "bg-success" };
+  const widthMap = { weak: "w-1/3", fair: "w-2/3", strong: "w-full" };
+
+  return (
+    <div className="space-y-1.5">
+      <div className="h-1.5 w-full bg-secondary rounded-full overflow-hidden">
+        <div
+          className={`h-full rounded-full transition-all duration-300 ${colorMap[result.strength]} ${widthMap[result.strength]}`}
+        />
+      </div>
+      <div className="flex flex-wrap gap-x-3 gap-y-0.5">
+        {passwordRules.map((rule) => {
+          const passed = !result.errors.includes(rule);
+          return (
+            <span
+              key={rule}
+              className={`text-[10px] ${passed ? "text-success" : "text-muted-foreground"}`}
+            >
+              {passed ? "\u2713" : "\u2022"} {rule}
+            </span>
+          );
+        })}
+      </div>
+    </div>
+  );
+}
+
 export default function Auth() {
   const navigate = useNavigate();
+  const [searchParams] = useSearchParams();
   const { user, role: userRole, signIn, signUp } = useAuth();
+
+  // Show toast if redirected due to idle timeout
+  useEffect(() => {
+    if (searchParams.get("reason") === "idle") {
+      toast.info("You were logged out due to inactivity");
+    }
+  }, [searchParams]);
   
   const [mode, setMode] = useState<AuthMode>("login");
   const [selectedRole, setSelectedRole] = useState<UserRole>("provider");
@@ -44,7 +82,10 @@ export default function Auth() {
 
   const validatePassword = (password: string) => {
     if (!password) return "Password is required";
-    if (password.length < 6) return "Password must be at least 6 characters";
+    if (mode === "signup") {
+      const result = validatePasswordStrength(password);
+      if (!result.isValid) return result.errors[0];
+    }
     return undefined;
   };
 
@@ -285,6 +326,9 @@ export default function Auth() {
                   <AlertCircle className="h-3 w-3" />
                   {errors.password}
                 </p>
+              )}
+              {mode === "signup" && password && (
+                <PasswordStrengthIndicator password={password} />
               )}
             </div>
 

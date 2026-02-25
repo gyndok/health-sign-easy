@@ -1,5 +1,6 @@
 import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
+import { logAuditEvent } from "@/lib/auditLog";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
@@ -210,6 +211,9 @@ export default function PatientDashboard() {
       }
     } else {
       toast.success("Consent withdrawal submitted");
+      logAuditEvent("consent.withdrawn", "consent_submission", selectedSubmission.id, {
+        reason: withdrawReason.trim() || null,
+      });
       fetchSubmissions();
     }
 

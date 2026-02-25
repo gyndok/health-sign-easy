@@ -539,7 +539,7 @@ serve(async (req) => {
     // Get signed URL
     const { data: signedUrlData, error: signedUrlError } = await supabase.storage
       .from("consent-pdfs")
-      .createSignedUrl(fileName, 60 * 60 * 24 * 365);
+      .createSignedUrl(fileName, 60 * 60); // 1-hour lifetime for HIPAA compliance
 
     if (signedUrlError) {
       console.error("Error creating signed URL:", signedUrlError);

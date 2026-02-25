@@ -38,6 +38,7 @@ import {
 import { toast } from "sonner";
 import { useAuth } from "@/hooks/useAuth";
 import { supabase } from "@/integrations/supabase/client";
+import { validatePasswordStrength } from "@/lib/passwordValidation";
 import { format } from "date-fns";
 
 interface PatientProfile {
@@ -189,8 +190,9 @@ export default function PatientSettings() {
       return;
     }
     
-    if (newPassword.length < 8) {
-      toast.error("Password must be at least 8 characters");
+    const pwResult = validatePasswordStrength(newPassword);
+    if (!pwResult.isValid) {
+      toast.error(pwResult.errors[0]);
       return;
     }
     

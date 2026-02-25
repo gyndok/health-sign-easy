@@ -831,12 +831,31 @@ export type Database = {
       log_audit_event: {
         Args: {
           p_action: string
-          p_details?: Json
-          p_org_id?: string
-          p_resource_id: string
           p_resource_type: string
+          p_resource_id?: string
+          p_details?: Json
         }
-        Returns: string
+        Returns: undefined
+      }
+      get_audit_log_entries: {
+        Args: {
+          p_limit?: number
+          p_offset?: number
+          p_action_filter?: string
+          p_search?: string
+          p_days?: number
+        }
+        Returns: {
+          id: string
+          action: string
+          resource_type: string
+          resource_id: string | null
+          details: Json | null
+          actor_id: string | null
+          org_id: string | null
+          created_at: string
+          actor_email: string | null
+        }[]
       }
       mark_invite_viewed: { Args: { p_token: string }; Returns: boolean }
       submit_consent_by_token: {

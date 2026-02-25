@@ -1,7 +1,10 @@
-import { useState, useEffect, createContext, useContext, ReactNode } from "react";
+import { useState, useEffect, useCallback, createContext, useContext, ReactNode } from "react";
 import { User, Session } from "@supabase/supabase-js";
 import { supabase } from "@/integrations/supabase/client";
 import { Database } from "@/integrations/supabase/types";
+import { useIdleTimeout } from "@/hooks/useIdleTimeout";
+import { IdleTimeoutDialog } from "@/components/auth/IdleTimeoutDialog";
+import { logAuditEvent } from "@/lib/auditLog";
 
 type UserProfile = Database['public']['Tables']['user_profiles']['Row'];
 type Organization = Database['public']['Tables']['organizations']['Row'];
@@ -98,10 +101,13 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   }, []);
 
   const signIn = async (email: string, password: string) => {
-    const { error } = await supabase.auth.signInWithPassword({
+    const { error, data } = await supabase.auth.signInWithPassword({
       email,
       password,
     });
+    if (!error && data.user) {
+      logAuditEvent("user.login", "user", data.user.id);
+    }
     return { error };
   };
 
@@ -123,6 +129,9 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   };
 
   const signOut = async () => {
+    if (user) {
+      logAuditEvent("user.logout", "user", user.id);
+    }
     await supabase.auth.signOut();
     setProfile(null);
     setRole(null);
@@ -134,6 +143,16 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       await fetchProfile(user.id);
     }
   };
+
+  const handleIdleTimeout = useCallback(async () => {
+    await signOut();
+    window.location.href = "/auth?reason=idle";
+  }, []);
+
+  const { showWarning, secondsLeft, stayLoggedIn } = useIdleTimeout({
+    onTimeout: handleIdleTimeout,
+    enabled: !!user,
+  });
 
   return (
     <AuthContext.Provider value={{
@@ -150,6 +169,11 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       refreshProfile
     }}>
       {children}
+      <IdleTimeoutDialog
+        open={showWarning}
+        secondsLeft={secondsLeft}
+        onStayLoggedIn={stayLoggedIn}
+      />
     </AuthContext.Provider>
   );
 }

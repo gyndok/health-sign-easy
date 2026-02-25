@@ -1,6 +1,7 @@
 import { useState, useEffect } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import { ProviderLayout } from "@/components/layout/ProviderLayout";
+import { logAuditEvent } from "@/lib/auditLog";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
@@ -181,6 +182,9 @@ export default function Invitations() {
       toast.error("Failed to delete invitation");
     } else {
       toast.success("Invitation deleted");
+      logAuditEvent("invite.deleted", "invite", deleteInvite.id, {
+        patient_email: deleteInvite.patient_email,
+      });
       setInvitations(invitations.filter((i) => i.id !== deleteInvite.id));
     }
     setIsDeleting(false);

@@ -25,6 +25,7 @@ import Submissions from "./pages/Submissions";
 import DemoPatientView from "./pages/DemoPatientView";
 import ProviderOnboarding from "./pages/ProviderOnboarding";
 import PatientOnboarding from "./pages/PatientOnboarding";
+import Compliance from "./pages/Compliance";
 import NotFound from "./pages/NotFound";
 
 const queryClient = new QueryClient();
@@ -44,6 +45,7 @@ const App = () => (
                 <Route path="/auth" element={<Auth />} />
                 <Route path="/consent/:token" element={<ConsentSigning />} />
                 <Route path="/demo/patient" element={<DemoPatientView />} />
+                <Route path="/compliance" element={<Compliance />} />
 
                 {/* Provider routes */}
                 <Route path="/dashboard" element={

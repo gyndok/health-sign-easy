@@ -20,6 +20,8 @@ import {
 import { PatientChatSheet } from "@/components/chat/PatientChatSheet";
 import { toast } from "sonner";
 import { supabase } from "@/integrations/supabase/client";
+import { validatePasswordStrength } from "@/lib/passwordValidation";
+import { logAuditEvent } from "@/lib/auditLog";
 
 interface InviteData {
   id: string;
@@ -186,8 +188,9 @@ export default function ConsentSigning() {
       return;
     }
 
-    if (password.length < 6) {
-      toast.error("Password must be at least 6 characters");
+    const pwResult = validatePasswordStrength(password);
+    if (!pwResult.isValid) {
+      toast.error(pwResult.errors[0]);
       return;
     }
 
@@ -321,6 +324,10 @@ export default function ConsentSigning() {
     }
 
     setIsComplete(true);
+    logAuditEvent("consent.signed", "consent_submission", submissionId || "", {
+      invite_id: invite?.id,
+      module_name: invite?.module_name,
+    });
     toast.success("Consent submitted successfully!");
     setIsSubmitting(false);
   };
@@ -688,11 +695,21 @@ export default function ConsentSigning() {
                   <Input
                     id="password"
                     type="password"
-                    placeholder="At least 6 characters"
+                    placeholder="Min 8 chars, upper + lower + number"
                     value={password}
                     onChange={(e) => setPassword(e.target.value)}
                     className="input-focus-ring"
                   />
+                  {password && (() => {
+                    const r = validatePasswordStrength(password);
+                    const colorMap = { weak: "bg-destructive", fair: "bg-warning", strong: "bg-success" };
+                    const widthMap = { weak: "w-1/3", fair: "w-2/3", strong: "w-full" };
+                    return (
+                      <div className="h-1.5 w-full bg-secondary rounded-full overflow-hidden">
+                        <div className={`h-full rounded-full transition-all duration-300 ${colorMap[r.strength]} ${widthMap[r.strength]}`} />
+                      </div>
+                    );
+                  })()}
                 </div>
 
                 <div className="space-y-2">

@@ -1,6 +1,7 @@
 import { useState, useEffect } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import { ProviderLayout } from "@/components/layout/ProviderLayout";
+import { logAuditEvent } from "@/lib/auditLog";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -100,6 +101,11 @@ export default function NewInvitation() {
       setIsSubmitting(false);
       return;
     }
+
+    logAuditEvent("invite.created", "invite", data.id, {
+      patient_email: email.trim().toLowerCase(),
+      module_id: selectedModule,
+    });
 
     // Build a link for clipboard fallback; email uses the backend's PUBLIC_APP_URL
     const consentLink = `${window.location.origin}/consent/${data.token}`;

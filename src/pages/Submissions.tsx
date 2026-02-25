@@ -1,5 +1,6 @@
 import { useState, useEffect } from "react";
 import { ProviderLayout } from "@/components/layout/ProviderLayout";
+import { logAuditEvent } from "@/lib/auditLog";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
@@ -129,7 +130,8 @@ export default function Submissions() {
 
   const isWithdrawn = (submission: SubmissionWithModule) => !!getWithdrawal(submission);
 
-  const handleDownloadPdf = async (pdfUrl: string, patientName: string) => {
+  const handleDownloadPdf = async (pdfUrl: string, patientName: string, submissionId?: string) => {
+    logAuditEvent("pdf.downloaded", "consent_submission", submissionId || "", { patient_name: patientName });
     try {
       const response = await fetch(pdfUrl);
       if (!response.ok) throw new Error("Failed to fetch PDF");
@@ -148,7 +150,8 @@ export default function Submissions() {
     }
   };
 
-  const handleViewPdf = (pdfUrl: string) => {
+  const handleViewPdf = (pdfUrl: string, submissionId?: string) => {
+    logAuditEvent("pdf.viewed", "consent_submission", submissionId || "");
     window.open(pdfUrl, "_blank");
   };
 
@@ -319,13 +322,13 @@ export default function Submissions() {
                                 </Button>
                               </DropdownMenuTrigger>
                               <DropdownMenuContent align="end">
-                                <DropdownMenuItem onClick={() => handleViewPdf(submission.pdf_url!)}>
+                                <DropdownMenuItem onClick={() => handleViewPdf(submission.pdf_url!, submission.id)}>
                                   <Eye className="h-4 w-4 mr-2" />
                                   View PDF
                                 </DropdownMenuItem>
                                 <DropdownMenuItem
                                   onClick={() =>
-                                    handleDownloadPdf(submission.pdf_url!, patientName)
+                                    handleDownloadPdf(submission.pdf_url!, patientName, submission.id)
                                   }
                                 >
                                   <Download className="h-4 w-4 mr-2" />
