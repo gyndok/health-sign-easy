@@ -11,6 +11,7 @@ import {
   X,
   Shield,
   ClipboardList,
+  MessageSquare,
 } from "lucide-react";
 import { useState } from "react";
 import { useAuth } from "@/hooks/useAuth";
@@ -27,6 +28,7 @@ const navItems: NavItem[] = [
   { label: "Dashboard", href: "/dashboard", icon: LayoutDashboard },
   { label: "Modules", href: "/modules", icon: FileText },
   { label: "Invitations", href: "/invitations", icon: Send },
+  { label: "Chat", href: "/chat", icon: MessageSquare },
   { label: "Audit Log", href: "/audit-log", icon: ClipboardList },
   { label: "Settings", href: "/settings", icon: Settings },
 ];

@@ -29,6 +29,7 @@ import ProviderOnboarding from "./pages/ProviderOnboarding";
 import PatientOnboarding from "./pages/PatientOnboarding";
 import Compliance from "./pages/Compliance";
 import AuditLog from "./pages/AuditLog";
+import Chat from "./pages/Chat";
 import NotFound from "./pages/NotFound";
 
 const queryClient = new QueryClient();
@@ -100,6 +101,11 @@ const App = () => (
                 <Route path="/audit-log" element={
                   <ProtectedRoute allowedRoles={["provider", "org_admin", "super_admin"]}>
                     <AuditLog />
+                  </ProtectedRoute>
+                } />
+                <Route path="/chat" element={
+                  <ProtectedRoute allowedRoles={["provider", "org_admin", "super_admin"]}>
+                    <Chat />
                   </ProtectedRoute>
                 } />
 
