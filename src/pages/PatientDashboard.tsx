@@ -24,7 +24,11 @@ import {
   CheckCircle2,
   XCircle,
   Eye,
+  MessageCircle,
+  Clock,
+  ArrowRight,
 } from "lucide-react";
+import { PatientChatSheet } from "@/components/chat/PatientChatSheet";
 import { toast } from "sonner";
 import { useAuth } from "@/hooks/useAuth";
 import { supabase } from "@/integrations/supabase/client";
@@ -33,6 +37,7 @@ import { format } from "date-fns";
 
 interface ConsentSubmission {
   id: string;
+  invite_id: string;
   signed_at: string;
   pdf_url: string | null;
   patient_first_name: string;
@@ -48,22 +53,41 @@ interface ConsentSubmission {
     withdrawn_at: string;
     reason: string | null;
   }> | null;
+  invites: {
+    token: string;
+  } | null;
+}
+
+interface PendingInvite {
+  id: string;
+  token: string;
+  status: string;
+  expires_at: string;
+  created_at: string;
+  consent_modules: {
+    name: string;
+  } | null;
 }
 
 export default function PatientDashboard() {
   const { user, signOut } = useAuth();
   const navigate = useNavigate();
   const [submissions, setSubmissions] = useState<ConsentSubmission[]>([]);
+  const [pendingInvites, setPendingInvites] = useState<PendingInvite[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [selectedSubmission, setSelectedSubmission] = useState<ConsentSubmission | null>(null);
   const [withdrawDialogOpen, setWithdrawDialogOpen] = useState(false);
   const [withdrawReason, setWithdrawReason] = useState("");
   const [isWithdrawing, setIsWithdrawing] = useState(false);
   const [viewMaterialsOpen, setViewMaterialsOpen] = useState(false);
+  const [chatToken, setChatToken] = useState<string | null>(null);
+  const [chatInviteId, setChatInviteId] = useState<string | null>(null);
+  const [chatModuleName, setChatModuleName] = useState<string>("");
 
   useEffect(() => {
     if (user) {
       fetchSubmissions();
+      fetchPendingInvites();
     }
   }, [user]);
 
@@ -75,6 +99,7 @@ export default function PatientDashboard() {
       .from("consent_submissions")
       .select(`
         id,
+        invite_id,
         signed_at,
         pdf_url,
         patient_first_name,
@@ -89,6 +114,9 @@ export default function PatientDashboard() {
           id,
           withdrawn_at,
           reason
+        ),
+        invites (
+          token
         )
       `)
       .order("signed_at", { ascending: false });
@@ -101,6 +129,39 @@ export default function PatientDashboard() {
       setSubmissions((data || []) as unknown as ConsentSubmission[]);
     }
     setIsLoading(false);
+  };
+
+  const fetchPendingInvites = async () => {
+    if (!user) return;
+
+    const { data, error } = await supabase
+      .from("invites")
+      .select(`
+        id,
+        token,
+        status,
+        expires_at,
+        created_at,
+        consent_modules (
+          name
+        )
+      `)
+      .eq("patient_user_id", user.id)
+      .in("status", ["pending", "viewed"])
+      .gt("expires_at", new Date().toISOString())
+      .order("created_at", { ascending: false });
+
+    if (error) {
+      console.error("Error fetching pending invites:", error);
+    } else {
+      setPendingInvites((data || []) as unknown as PendingInvite[]);
+    }
+  };
+
+  const openChat = (token: string, inviteId: string, moduleName: string) => {
+    setChatToken(token);
+    setChatInviteId(inviteId);
+    setChatModuleName(moduleName);
   };
 
   const handleDownloadPdf = async (submission: ConsentSubmission) => {
@@ -208,6 +269,62 @@ export default function PatientDashboard() {
           </p>
         </div>
 
+        {/* Pending Invites Section */}
+        {pendingInvites.length > 0 && (
+          <div className="mb-8">
+            <h2 className="text-lg font-semibold mb-4 flex items-center gap-2">
+              <Clock className="h-5 w-5 text-orange-500" />
+              Pending Consent Forms
+            </h2>
+            <div className="space-y-3">
+              {pendingInvites.map((invite) => (
+                <Card key={invite.id} className="border-orange-200 bg-orange-50/50">
+                  <CardContent className="py-4">
+                    <div className="flex items-center justify-between gap-4">
+                      <div className="flex-1 min-w-0">
+                        <div className="flex items-center gap-2 mb-1">
+                          <h3 className="font-medium text-sm truncate">
+                            {invite.consent_modules?.name || "Consent Form"}
+                          </h3>
+                          <Badge variant="outline" className="text-xs bg-orange-100 text-orange-700 border-orange-300">
+                            {invite.status === "viewed" ? "In Progress" : "Pending"}
+                          </Badge>
+                        </div>
+                        <p className="text-xs text-muted-foreground">
+                          Expires {format(new Date(invite.expires_at), "MMM d, yyyy")}
+                        </p>
+                      </div>
+                      <div className="flex gap-2 flex-shrink-0">
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          onClick={() =>
+                            openChat(
+                              invite.token,
+                              invite.id,
+                              invite.consent_modules?.name || "Consent Form"
+                            )
+                          }
+                        >
+                          <MessageCircle className="h-4 w-4 mr-1" />
+                          Ask a Question
+                        </Button>
+                        <Button
+                          size="sm"
+                          onClick={() => navigate(`/consent/${invite.token}`)}
+                        >
+                          <ArrowRight className="h-4 w-4 mr-1" />
+                          Continue Signing
+                        </Button>
+                      </div>
+                    </div>
+                  </CardContent>
+                </Card>
+              ))}
+            </div>
+          </div>
+        )}
+
         {submissions.length === 0 ? (
           <Card>
             <CardContent className="py-12 text-center">
@@ -285,6 +402,23 @@ export default function PatientDashboard() {
                       Download PDF
                     </Button>
 
+                    {submission.invites?.token && (
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        onClick={() =>
+                          openChat(
+                            submission.invites!.token,
+                            submission.invite_id,
+                            submission.consent_modules?.name || "Consent Form"
+                          )
+                        }
+                      >
+                        <MessageCircle className="h-4 w-4 mr-2" />
+                        Chat
+                      </Button>
+                    )}
+
                     {!isWithdrawn(submission) && (
                       <Button
                         variant="outline"
@@ -306,6 +440,16 @@ export default function PatientDashboard() {
           </div>
         )}
       </main>
+
+      {/* Chat Sheet */}
+      {chatToken && chatInviteId && (
+        <PatientChatSheet
+          token={chatToken}
+          inviteId={chatInviteId}
+          moduleName={chatModuleName}
+          senderName={user?.user_metadata?.full_name || user?.email?.split("@")[0] || "Patient"}
+        />
+      )}
 
       {/* View Materials Dialog */}
       <Dialog open={viewMaterialsOpen} onOpenChange={setViewMaterialsOpen}>

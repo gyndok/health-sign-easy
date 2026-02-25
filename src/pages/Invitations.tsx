@@ -20,7 +20,9 @@ import {
   ExternalLink,
   FileDown,
   AlertTriangle,
+  MessageCircle,
 } from "lucide-react";
+import { ProviderChatSheet } from "@/components/chat/ProviderChatSheet";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -99,12 +101,28 @@ export default function Invitations() {
   const [statusFilter, setStatusFilter] = useState<InviteStatus | "all">("all");
   const [deleteInvite, setDeleteInvite] = useState<InviteWithModule | null>(null);
   const [isDeleting, setIsDeleting] = useState(false);
+  const [messageCounts, setMessageCounts] = useState<Record<string, number>>({});
+  const [chatInvite, setChatInvite] = useState<InviteWithModule | null>(null);
 
   useEffect(() => {
     if (user) {
       fetchInvitations();
+      fetchMessageCounts();
     }
   }, [user]);
+
+  const fetchMessageCounts = async () => {
+    const { data, error } = await supabase.rpc("get_invite_unread_message_counts");
+    if (error) {
+      console.error("Error fetching message counts:", error);
+      return;
+    }
+    const counts: Record<string, number> = {};
+    for (const row of data || []) {
+      counts[row.invite_id] = row.patient_message_count;
+    }
+    setMessageCounts(counts);
+  };
 
   const fetchInvitations = async () => {
     if (!user) return;
@@ -438,10 +456,21 @@ export default function Invitations() {
                           </span>
                         </td>
                         <td className="px-6 py-4">
-                          <Badge variant={status.variant} className="gap-1">
-                            <StatusIcon className="h-3 w-3" />
-                            {status.label}
-                          </Badge>
+                          <div className="flex items-center gap-2">
+                            <Badge variant={status.variant} className="gap-1">
+                              <StatusIcon className="h-3 w-3" />
+                              {status.label}
+                            </Badge>
+                            {messageCounts[invitation.id] > 0 && (
+                              <button
+                                onClick={() => setChatInvite(invitation)}
+                                className="inline-flex items-center gap-1 text-xs text-primary hover:underline"
+                              >
+                                <MessageCircle className="h-3 w-3" />
+                                {messageCounts[invitation.id]}
+                              </button>
+                            )}
+                          </div>
                         </td>
                         <td className="px-6 py-4 text-right">
                           <DropdownMenu>
@@ -495,6 +524,15 @@ export default function Invitations() {
                                   </DropdownMenuItem>
                                 </>
                               )}
+                              <DropdownMenuItem onClick={() => setChatInvite(invitation)}>
+                                <MessageCircle className="h-4 w-4 mr-2" />
+                                Chat
+                                {messageCounts[invitation.id] > 0 && (
+                                  <Badge variant="secondary" className="ml-auto text-xs px-1.5 py-0">
+                                    {messageCounts[invitation.id]}
+                                  </Badge>
+                                )}
+                              </DropdownMenuItem>
                               <DropdownMenuSeparator />
                               <DropdownMenuItem
                                 className="text-destructive"
@@ -515,6 +553,26 @@ export default function Invitations() {
           </div>
         )}
       </div>
+
+      {/* Chat Sheet */}
+      {chatInvite && (
+        <ProviderChatSheet
+          open={!!chatInvite}
+          onOpenChange={(open) => {
+            if (!open) {
+              setChatInvite(null);
+              fetchMessageCounts();
+            }
+          }}
+          inviteId={chatInvite.id}
+          patientName={
+            chatInvite.patient_first_name && chatInvite.patient_last_name
+              ? `${chatInvite.patient_first_name} ${chatInvite.patient_last_name}`
+              : chatInvite.patient_email
+          }
+          moduleName={chatInvite.consent_modules?.name || "Consent Form"}
+        />
+      )}
 
       {/* Delete Confirmation Dialog */}
       <AlertDialog open={!!deleteInvite} onOpenChange={() => setDeleteInvite(null)}>

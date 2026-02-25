@@ -6,7 +6,7 @@ import { RecentSubmissionsTable } from "@/components/dashboard/RecentSubmissions
 import { RecentWithdrawals } from "@/components/dashboard/RecentWithdrawals";
 import { QuickActions } from "@/components/dashboard/QuickActions";
 import { Input } from "@/components/ui/input";
-import { Search, AlertTriangle } from "lucide-react";
+import { Search, AlertTriangle, MessageCircle } from "lucide-react";
 import { useAuth } from "@/hooks/useAuth";
 import { supabase } from "@/integrations/supabase/client";
 import { useDemoTour } from "@/hooks/useDemoTour";
@@ -18,6 +18,7 @@ interface DashboardStats {
   totalModules: number;
   totalPatients: number;
   withdrawalsCount: number;
+  unreadMessages: number;
 }
 
 export default function Dashboard() {
@@ -31,6 +32,7 @@ export default function Dashboard() {
     totalModules: 0,
     totalPatients: 0,
     withdrawalsCount: 0,
+    unreadMessages: 0,
   });
 
   useEffect(() => {
@@ -92,12 +94,20 @@ export default function Dashboard() {
       `)
       .eq("consent_submissions.provider_id", user.id);
 
+    // Fetch unread message counts
+    const { data: messageCounts } = await supabase.rpc("get_invite_unread_message_counts");
+    const totalUnread = (messageCounts || []).reduce(
+      (sum: number, row: { patient_message_count: number }) => sum + row.patient_message_count,
+      0
+    );
+
     setStats({
       pendingConsents: pendingCount || 0,
       completedToday: completedCount || 0,
       totalModules: modulesCount || 0,
       totalPatients: patientsCount || 0,
       withdrawalsCount: withdrawalsData?.length || 0,
+      unreadMessages: totalUnread,
     });
   };
 
@@ -127,7 +137,7 @@ export default function Dashboard() {
         </div>
 
         {/* Stats Grid */}
-        <div data-tour="stats-grid" className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-4">
+        <div data-tour="stats-grid" className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-6 gap-4">
           <StatCard
             title="Pending Consents"
             value={stats.pendingConsents}
@@ -155,6 +165,13 @@ export default function Dashboard() {
             description="Invited to sign"
             icon={Users}
             variant="default"
+          />
+          <StatCard
+            title="Patient Messages"
+            value={stats.unreadMessages}
+            description="Awaiting response"
+            icon={MessageCircle}
+            variant={stats.unreadMessages > 0 ? "warning" : "default"}
           />
           <StatCard
             title="Withdrawals"

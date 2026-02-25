@@ -61,6 +61,44 @@ export type Database = {
           },
         ]
       }
+      consent_messages: {
+        Row: {
+          id: string
+          invite_id: string
+          sender_id: string | null
+          sender_role: string
+          sender_name: string
+          message: string
+          created_at: string
+        }
+        Insert: {
+          id?: string
+          invite_id: string
+          sender_id?: string | null
+          sender_role: string
+          sender_name: string
+          message: string
+          created_at?: string
+        }
+        Update: {
+          id?: string
+          invite_id?: string
+          sender_id?: string | null
+          sender_role?: string
+          sender_name?: string
+          message?: string
+          created_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "consent_messages_invite_id_fkey"
+            columns: ["invite_id"]
+            isOneToOne: false
+            referencedRelation: "invites"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       consent_modules: {
         Row: {
           created_at: string
@@ -749,6 +787,24 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
+      get_consent_messages_by_token: {
+        Args: { p_token: string }
+        Returns: {
+          id: string
+          invite_id: string
+          sender_role: string
+          sender_name: string
+          message: string
+          created_at: string
+        }[]
+      }
+      get_invite_unread_message_counts: {
+        Args: Record<string, never>
+        Returns: {
+          invite_id: string
+          patient_message_count: number
+        }[]
+      }
       get_invite_by_token: {
         Args: { p_token: string }
         Returns: {
@@ -842,6 +898,21 @@ export type Database = {
           p_timezone?: string | null
           p_default_consent_expiry_days?: number | null
           p_mark_complete?: boolean
+        }
+        Returns: Json
+      }
+      send_consent_message_by_token: {
+        Args: {
+          p_token: string
+          p_message: string
+          p_sender_name: string
+        }
+        Returns: Json
+      }
+      send_consent_message_as_provider: {
+        Args: {
+          p_invite_id: string
+          p_message: string
         }
         Returns: Json
       }

@@ -4,10 +4,10 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Checkbox } from "@/components/ui/checkbox";
-import { 
-  Shield, 
-  Video, 
-  FileText, 
+import {
+  Shield,
+  Video,
+  FileText,
   CheckCircle2,
   AlertCircle,
   Loader2,
@@ -17,6 +17,7 @@ import {
   Lock,
   Mail,
 } from "lucide-react";
+import { PatientChatSheet } from "@/components/chat/PatientChatSheet";
 import { toast } from "sonner";
 import { supabase } from "@/integrations/supabase/client";
 
@@ -385,6 +386,15 @@ export default function ConsentSigning() {
             You may close this window.
           </p>
         </div>
+        {/* Chat FAB on success screen */}
+        {token && invite && (
+          <PatientChatSheet
+            token={token}
+            inviteId={invite.id}
+            moduleName={invite.module_name}
+            senderName={`${firstName} ${lastName}`.trim() || "Patient"}
+          />
+        )}
       </div>
     );
   }
@@ -901,6 +911,16 @@ export default function ConsentSigning() {
           </p>
         </div>
       </main>
+
+      {/* Chat FAB on consent form */}
+      {token && invite && (
+        <PatientChatSheet
+          token={token}
+          inviteId={invite.id}
+          moduleName={invite.module_name}
+          senderName={`${firstName} ${lastName}`.trim() || "Patient"}
+        />
+      )}
     </div>
   );
 }

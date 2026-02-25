@@ -12,7 +12,9 @@ import {
   MoreHorizontal,
   CheckCircle2,
   XCircle,
+  MessageCircle,
 } from "lucide-react";
+import { ProviderChatSheet } from "@/components/chat/ProviderChatSheet";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -44,6 +46,7 @@ type ConsentWithdrawal = {
 
 interface SubmissionWithModule {
   id: string;
+  invite_id: string;
   patient_first_name: string;
   patient_last_name: string;
   patient_email: string;
@@ -65,6 +68,7 @@ export default function Submissions() {
   const [statusFilter, setStatusFilter] = useState<"all" | "completed" | "withdrawn">("all");
   const [currentPage, setCurrentPage] = useState(1);
   const [totalCount, setTotalCount] = useState(0);
+  const [chatSubmission, setChatSubmission] = useState<SubmissionWithModule | null>(null);
 
   useEffect(() => {
     if (user) {
@@ -92,6 +96,7 @@ export default function Submissions() {
         .from("consent_submissions")
         .select(`
           id,
+          invite_id,
           patient_first_name,
           patient_last_name,
           patient_email,
@@ -326,17 +331,31 @@ export default function Submissions() {
                                   <Download className="h-4 w-4 mr-2" />
                                   Download PDF
                                 </DropdownMenuItem>
+                                <DropdownMenuItem onClick={() => setChatSubmission(submission)}>
+                                  <MessageCircle className="h-4 w-4 mr-2" />
+                                  Chat
+                                </DropdownMenuItem>
                               </DropdownMenuContent>
                             </DropdownMenu>
                           ) : (
-                            <Tooltip>
-                              <TooltipTrigger asChild>
-                                <span className="text-xs text-muted-foreground">No PDF</span>
-                              </TooltipTrigger>
-                              <TooltipContent>
-                                PDF not yet generated for this submission
-                              </TooltipContent>
-                            </Tooltip>
+                            <div className="flex items-center gap-2">
+                              <Tooltip>
+                                <TooltipTrigger asChild>
+                                  <span className="text-xs text-muted-foreground">No PDF</span>
+                                </TooltipTrigger>
+                                <TooltipContent>
+                                  PDF not yet generated for this submission
+                                </TooltipContent>
+                              </Tooltip>
+                              <Button
+                                variant="ghost"
+                                size="icon"
+                                className="h-8 w-8"
+                                onClick={() => setChatSubmission(submission)}
+                              >
+                                <MessageCircle className="h-4 w-4" />
+                              </Button>
+                            </div>
                           )}
                         </td>
                       </tr>
@@ -346,6 +365,19 @@ export default function Submissions() {
               </table>
             </div>
           </div>
+        )}
+
+        {/* Chat Sheet */}
+        {chatSubmission && (
+          <ProviderChatSheet
+            open={!!chatSubmission}
+            onOpenChange={(open) => {
+              if (!open) setChatSubmission(null);
+            }}
+            inviteId={chatSubmission.invite_id}
+            patientName={formatPatientName(chatSubmission.patient_first_name, chatSubmission.patient_last_name)}
+            moduleName={chatSubmission.consent_modules?.name || "Consent Form"}
+          />
         )}
 
         {/* Pagination */}

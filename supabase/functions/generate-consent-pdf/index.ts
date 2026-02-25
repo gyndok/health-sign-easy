@@ -383,6 +383,54 @@ serve(async (req) => {
       });
     }
 
+    // Fetch chat messages for this invite
+    const { data: chatMessages } = await supabase
+      .from("consent_messages")
+      .select("sender_role, sender_name, message, created_at")
+      .eq("invite_id", submission.invite_id)
+      .order("created_at", { ascending: true });
+
+    // Patient Questions & Provider Responses section
+    if (chatMessages && chatMessages.length > 0) {
+      drawSectionBox("PATIENT QUESTIONS & PROVIDER RESPONSES", () => {
+        const tz = provider?.timezone || "UTC";
+
+        for (let i = 0; i < chatMessages.length; i++) {
+          const msg = chatMessages[i];
+          const roleLabel = msg.sender_role === "patient" ? "PATIENT" : "PROVIDER";
+          const msgTime = new Date(msg.created_at).toLocaleString("en-US", {
+            month: "short",
+            day: "numeric",
+            year: "numeric",
+            hour: "2-digit",
+            minute: "2-digit",
+            timeZone: tz,
+          });
+
+          ensureSpace(30);
+
+          // Role label + sender name + timestamp
+          const headerText = `${roleLabel} (${sanitize(msg.sender_name)}) - ${msgTime}`;
+          currentPage.drawText(headerText, {
+            x: MARGIN + 8,
+            y: yPos,
+            size: 9,
+            font: helveticaBold,
+            color: msg.sender_role === "patient" ? COLORS.accent : COLORS.gray,
+          });
+          yPos -= 14;
+
+          // Message body
+          drawParagraph(msg.message, 8);
+
+          // Add spacing between messages
+          if (i < chatMessages.length - 1) {
+            yPos -= 4;
+          }
+        }
+      });
+    }
+
     // Acknowledgment
     drawSectionBox("ACKNOWLEDGMENT", () => {
       const ackText =
