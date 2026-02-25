@@ -22,6 +22,22 @@ import {
 } from "lucide-react";
 import { formatDistanceToNow } from "date-fns";
 
+// ─── Short Time Formatter ────────────────────────────────────────────
+function shortTimeAgo(dateStr: string): string {
+  const now = Date.now();
+  const then = new Date(dateStr).getTime();
+  const diffMs = now - then;
+  const mins = Math.floor(diffMs / 60000);
+  if (mins < 1) return "now";
+  if (mins < 60) return `${mins}m`;
+  const hours = Math.floor(mins / 60);
+  if (hours < 24) return `${hours}h`;
+  const days = Math.floor(hours / 24);
+  if (days < 7) return `${days}d`;
+  const weeks = Math.floor(days / 7);
+  return `${weeks}w`;
+}
+
 // ─── Types ───────────────────────────────────────────────────────────
 interface Conversation {
   inviteId: string;
@@ -116,7 +132,7 @@ function ConversationSidebar({
   const totalUnread = conversations.reduce((acc, c) => acc + c.unreadCount, 0);
 
   return (
-    <div className="flex flex-col w-full md:w-[320px] lg:w-[360px] min-w-[280px] border-r border-border bg-background shrink-0">
+    <div className="flex flex-col w-full md:w-[340px] lg:w-[380px] border-r border-border bg-background shrink-0 overflow-hidden">
       {/* Header */}
       <div className="flex items-center justify-between px-4 py-3 border-b border-border shrink-0">
         <div className="flex items-center gap-2">
@@ -200,8 +216,8 @@ function ConversationSidebar({
                 </Avatar>
 
                 {/* Content */}
-                <div className="flex-1 min-w-0">
-                  <div className="flex items-center justify-between mb-0.5">
+                <div className="flex-1 min-w-0 overflow-hidden">
+                  <div className="flex items-center justify-between gap-2 mb-0.5">
                     <span
                       className={cn(
                         "text-sm font-medium truncate",
@@ -210,7 +226,7 @@ function ConversationSidebar({
                     >
                       {conv.patientName}
                     </span>
-                    <span className="text-[11px] text-muted-foreground shrink-0 ml-2">
+                    <span className="text-[10px] text-muted-foreground shrink-0 whitespace-nowrap">
                       {conv.lastMessageTime}
                     </span>
                   </div>
@@ -220,10 +236,10 @@ function ConversationSidebar({
                       {conv.moduleName}
                     </span>
                   </div>
-                  <div className="flex items-center justify-between">
+                  <div className="flex items-center justify-between gap-2">
                     <p
                       className={cn(
-                        "text-xs truncate pr-2",
+                        "text-xs truncate",
                         conv.unreadCount > 0
                           ? "text-foreground font-medium"
                           : "text-muted-foreground"
@@ -568,7 +584,7 @@ export default function Chat() {
         moduleName,
         inviteStatus: inv.status.charAt(0).toUpperCase() + inv.status.slice(1),
         lastMessage: lastMsg.message,
-        lastMessageTime: formatDistanceToNow(new Date(lastMsg.created_at), { addSuffix: true }),
+        lastMessageTime: shortTimeAgo(lastMsg.created_at),
         unreadCount: countMap[inv.id] || 0,
       });
     }
