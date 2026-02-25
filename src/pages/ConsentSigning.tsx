@@ -18,6 +18,8 @@ import {
   Mail,
 } from "lucide-react";
 import { PatientChatSheet } from "@/components/chat/PatientChatSheet";
+import { LanguageSelector } from "@/components/ui/language-selector";
+import { useTranslation } from "react-i18next";
 import { toast } from "sonner";
 import { supabase } from "@/integrations/supabase/client";
 import { validatePasswordStrength } from "@/lib/passwordValidation";
@@ -44,7 +46,8 @@ type OnboardingMode = "choice" | "guest" | "account" | "login" | "complete";
 
 export default function ConsentSigning() {
   const { token } = useParams();
-  
+  const { t } = useTranslation("consent");
+
   const [isLoading, setIsLoading] = useState(true);
   const [invite, setInvite] = useState<InviteData | null>(null);
   const [error, setError] = useState<string | null>(null);
@@ -750,13 +753,14 @@ export default function ConsentSigning() {
   return (
     <div className="min-h-screen bg-background">
       <header className="sticky top-0 z-50 border-b border-border bg-background/95 backdrop-blur">
-        <div className="container flex h-16 items-center">
+        <div className="container flex h-16 items-center justify-between">
           <div className="flex items-center gap-2.5">
             <div className="flex h-9 w-9 items-center justify-center rounded-lg bg-primary text-primary-foreground">
               <Shield className="h-5 w-5" />
             </div>
             <span className="font-display text-xl font-bold">ClearConsent</span>
           </div>
+          <LanguageSelector />
         </div>
       </header>
 
@@ -766,7 +770,7 @@ export default function ConsentSigning() {
             {invite?.module_name}
           </h1>
           <p className="text-sm sm:text-base text-muted-foreground">
-            Please review the information below and provide your signature.
+            {t("reviewInfo")}
           </p>
         </div>
 
@@ -776,7 +780,7 @@ export default function ConsentSigning() {
             <div className="card-elevated p-4 sm:p-6">
               <div className="flex items-center gap-3 mb-4">
                 <Video className="h-5 w-5 text-primary" />
-                <h2 className="font-semibold">Educational Video</h2>
+                <h2 className="font-semibold">{t("educationalVideo")}</h2>
               </div>
               <div className="aspect-video bg-muted rounded-lg overflow-hidden mb-4">
                 {(() => {
@@ -829,7 +833,7 @@ export default function ConsentSigning() {
                   onCheckedChange={(checked) => setVideoWatched(checked === true)}
                 />
                 <Label htmlFor="videoWatched" className="text-sm cursor-pointer">
-                  I have watched and understood the educational video
+                  {t("videoAck")}
                 </Label>
               </div>
             </div>
@@ -840,7 +844,7 @@ export default function ConsentSigning() {
             <div className="card-elevated p-4 sm:p-6">
               <div className="flex items-center gap-2 sm:gap-3 mb-3 sm:mb-4">
                 <FileText className="h-5 w-5 text-primary" />
-                <h2 className="font-semibold">Consent Information</h2>
+                <h2 className="font-semibold">{t("consentInfo")}</h2>
               </div>
               <div className="max-h-96 overflow-y-auto pr-2">
                 <div className="space-y-4 text-sm leading-relaxed text-foreground/80">
@@ -858,7 +862,7 @@ export default function ConsentSigning() {
 
           {/* Acknowledgment Section */}
           <div className="card-elevated p-4 sm:p-6">
-            <h2 className="font-semibold mb-4">Acknowledgment</h2>
+            <h2 className="font-semibold mb-4">{t("acknowledgment")}</h2>
             <div className="space-y-4">
               <div className="flex items-start gap-3">
                 <Checkbox
@@ -867,7 +871,7 @@ export default function ConsentSigning() {
                   onCheckedChange={(checked) => setMaterialsReviewed(checked === true)}
                 />
                 <Label htmlFor="materialsReviewed" className="text-sm cursor-pointer leading-relaxed">
-                  I have reviewed all the consent materials and understand the information provided.
+                  {t("ackMaterials")}
                 </Label>
               </div>
               <div className="flex items-start gap-3">
@@ -877,7 +881,7 @@ export default function ConsentSigning() {
                   onCheckedChange={(checked) => setAgreementChecked(checked === true)}
                 />
                 <Label htmlFor="agreementChecked" className="text-sm cursor-pointer leading-relaxed">
-                  I voluntarily agree to the procedure/treatment described and understand the risks, benefits, and alternatives.
+                  {t("ackAgreement")}
                 </Label>
               </div>
             </div>
@@ -885,20 +889,20 @@ export default function ConsentSigning() {
 
           {/* Signature Section */}
           <div className="card-elevated p-4 sm:p-6">
-            <h2 className="font-semibold mb-4">Digital Signature</h2>
+            <h2 className="font-semibold mb-4">{t("digitalSignature")}</h2>
             <div className="space-y-4">
               <div className="space-y-2">
-                <Label htmlFor="signature" className="text-sm sm:text-base">Type your full legal name as your signature</Label>
+                <Label htmlFor="signature" className="text-sm sm:text-base">{t("signatureLabel")}</Label>
                 <Input
                   id="signature"
-                  placeholder="e.g., Sarah Johnson"
+                  placeholder={t("signaturePlaceholder")}
                   value={signature}
                   onChange={(e) => setSignature(e.target.value)}
                   className="input-focus-ring text-base sm:text-lg"
                 />
               </div>
               <p className="text-xs text-muted-foreground">
-                By typing your name above, you acknowledge that this constitutes a legal signature.
+                {t("signatureLegal")}
               </p>
             </div>
           </div>
@@ -913,18 +917,18 @@ export default function ConsentSigning() {
             {isSubmitting ? (
               <>
                 <Loader2 className="h-4 w-4 mr-2 animate-spin" />
-                Submitting...
+                {t("submitting")}
               </>
             ) : (
               <>
                 <CheckCircle2 className="h-4 w-4 mr-2" />
-                Submit Signed Consent
+                {t("submitConsent")}
               </>
             )}
           </Button>
 
           <p className="text-xs text-center text-muted-foreground">
-            Date: {currentDate}
+            {t("date")}: {currentDate}
           </p>
         </div>
       </main>
@@ -933,7 +937,7 @@ export default function ConsentSigning() {
       <footer className="border-t border-border mt-12 py-4">
         <div className="container flex items-center justify-center gap-2 text-xs text-muted-foreground">
           <Shield className="h-3.5 w-3.5" />
-          <span>Secured by ClearConsent &middot; HIPAA Compliant</span>
+          <span>{t("securedBy")} &middot; {t("hipaaCompliant")}</span>
         </div>
       </footer>
 
