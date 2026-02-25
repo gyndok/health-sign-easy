@@ -20,6 +20,7 @@ import {
 import { PatientChatSheet } from "@/components/chat/PatientChatSheet";
 import { LanguageSelector } from "@/components/ui/language-selector";
 import { useTranslation } from "react-i18next";
+import DOMPurify from "dompurify";
 import { toast } from "sonner";
 import { supabase } from "@/integrations/supabase/client";
 import { validatePasswordStrength } from "@/lib/passwordValidation";
@@ -847,15 +848,24 @@ export default function ConsentSigning() {
                 <h2 className="font-semibold">{t("consentInfo")}</h2>
               </div>
               <div className="max-h-96 overflow-y-auto pr-2">
-                <div className="space-y-4 text-sm leading-relaxed text-foreground/80">
-                  {invite.module_description.split('\n').map((paragraph, index) => (
-                    paragraph.trim() && (
-                      <p key={index} className="text-justify">
-                        {paragraph}
-                      </p>
-                    )
-                  ))}
-                </div>
+                {invite.module_description.startsWith("<") ? (
+                  <div
+                    className="prose prose-sm max-w-none text-foreground/80"
+                    dangerouslySetInnerHTML={{
+                      __html: DOMPurify.sanitize(invite.module_description),
+                    }}
+                  />
+                ) : (
+                  <div className="space-y-4 text-sm leading-relaxed text-foreground/80">
+                    {invite.module_description.split('\n').map((paragraph, index) => (
+                      paragraph.trim() && (
+                        <p key={index} className="text-justify">
+                          {paragraph}
+                        </p>
+                      )
+                    ))}
+                  </div>
+                )}
               </div>
             </div>
           )}

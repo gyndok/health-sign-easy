@@ -272,8 +272,49 @@ serve(async (req) => {
       bullets: string[];
     }
 
+    // Strip HTML tags, preserving text content
+    const stripHtml = (html: string): string =>
+      html.replace(/<[^>]*>/g, "").replace(/&amp;/g, "&").replace(/&lt;/g, "<").replace(/&gt;/g, ">").replace(/&quot;/g, '"').replace(/&#39;/g, "'").replace(/&nbsp;/g, " ");
+
     const parseDescription = (desc: string): Section[] => {
       const sections: Section[] = [];
+
+      // If the description contains HTML tags, parse HTML structure
+      if (desc.includes("<")) {
+        let current: Section = { paragraphs: [], bullets: [] };
+
+        // Split by block-level HTML tags
+        const blocks = desc.split(/<\/?(?:h[23]|p|ul|ol|li|hr|div|br\s*\/?)>/gi);
+        const tags = desc.match(/<\/?(?:h[23]|p|ul|ol|li|hr|div|br\s*\/?)>/gi) || [];
+
+        let inList = false;
+        for (let i = 0; i < tags.length; i++) {
+          const tag = tags[i].toLowerCase();
+          const content = (blocks[i + 1] || "").trim();
+          const text = stripHtml(content).trim();
+
+          if (tag.match(/^<h[23]>$/)) {
+            if (current.heading || current.paragraphs.length || current.bullets.length) {
+              sections.push(current);
+            }
+            current = { heading: text, paragraphs: [], bullets: [] };
+          } else if (tag === "<ul>" || tag === "<ol>") {
+            inList = true;
+          } else if (tag === "</ul>" || tag === "</ol>") {
+            inList = false;
+          } else if (tag === "<li>" && text) {
+            current.bullets.push(text);
+          } else if (tag === "<p>" && text && !inList) {
+            current.paragraphs.push(text);
+          }
+        }
+        if (current.heading || current.paragraphs.length || current.bullets.length) {
+          sections.push(current);
+        }
+        return sections;
+      }
+
+      // Fallback: plain text parsing
       const lines = desc.split(/\n+/);
       let current: Section = { paragraphs: [], bullets: [] };
 
@@ -287,10 +328,10 @@ serve(async (req) => {
             sections.push(current);
           }
           current = { heading: line.slice(2).trim(), paragraphs: [], bullets: [] };
-        } else if (line.startsWith("- ") || line.startsWith("• ")) {
+        } else if (line.startsWith("- ") || line.startsWith("\u2022 ")) {
           current.bullets.push(line.slice(2).trim());
         } else if (/^[A-Z][^.!?]*$/.test(line) && line.length < 80) {
-          // Short capitalized line without period → treat as heading
+          // Short capitalized line without period -> treat as heading
           if (current.heading || current.paragraphs.length || current.bullets.length) {
             sections.push(current);
           }

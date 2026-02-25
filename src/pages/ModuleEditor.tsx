@@ -5,6 +5,8 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
+import { RichTextEditor } from "@/components/editor/RichTextEditor";
+import DOMPurify from "dompurify";
 import { Badge } from "@/components/ui/badge";
 import { 
   ArrowLeft, 
@@ -299,15 +301,13 @@ export default function ModuleEditor() {
 
               <div className="space-y-2">
                 <Label htmlFor="description">Consent Text *</Label>
-                <Textarea
-                  id="description"
+                <RichTextEditor
+                  content={description}
+                  onChange={setDescription}
                   placeholder="Enter the full consent text that patients will review and agree to..."
-                  value={description}
-                  onChange={(e) => setDescription(e.target.value)}
-                  className="min-h-[200px] input-focus-ring resize-y"
                 />
                 <p className="text-xs text-muted-foreground">
-                  {description ? "Review and edit the generated text as needed." : "Formatting will be preserved. Use line breaks for paragraphs."}
+                  {description ? "Review and edit the generated text as needed." : "Use the toolbar to format headings, lists, and bold text."}
                 </p>
               </div>
 
@@ -411,8 +411,13 @@ export default function ModuleEditor() {
                 )}
 
                 <div className="prose prose-sm max-w-none mb-6">
-                  {description ? (
-                    <p className="whitespace-pre-wrap text-sm">{description}</p>
+                  {description && description !== "<p></p>" ? (
+                    <div
+                      className="text-sm"
+                      dangerouslySetInnerHTML={{
+                        __html: DOMPurify.sanitize(description),
+                      }}
+                    />
                   ) : (
                     <p className="text-muted-foreground italic">
                       Consent text will appear here...
