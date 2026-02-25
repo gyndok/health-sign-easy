@@ -419,15 +419,22 @@ function EmptyState() {
 function ChatWindow({
   conversation,
   onBack,
+  onMarkAsRead,
 }: {
   conversation: Conversation;
   onBack: () => void;
+  onMarkAsRead: (inviteId: string) => void;
 }) {
   const scrollRef = useRef<HTMLDivElement>(null);
   const { messages, sendMessage, isLoading, isSending } = useConsentChat({
     inviteId: conversation.inviteId,
     enabled: true,
   });
+
+  // Mark as read when this conversation opens
+  useEffect(() => {
+    onMarkAsRead(conversation.inviteId);
+  }, [conversation.inviteId, onMarkAsRead]);
 
   // Auto-scroll to bottom
   useEffect(() => {
@@ -611,9 +618,21 @@ export default function Chat() {
 
   const activeConversation = conversations.find((c) => c.inviteId === activeInviteId) || null;
 
+  // Mark a conversation as read and refresh sidebar counts
+  const markAsRead = useCallback(async (inviteId: string) => {
+    await supabase.rpc("mark_conversation_read", { p_invite_id: inviteId });
+    // Optimistically clear the unread count in the sidebar
+    setConversations((prev) =>
+      prev.map((c) =>
+        c.inviteId === inviteId ? { ...c, unreadCount: 0 } : c
+      )
+    );
+  }, []);
+
   const handleSelectConversation = (id: string) => {
     setActiveInviteId(id);
     setShowMobileSidebar(false);
+    markAsRead(id);
   };
 
   const handleBack = () => {
@@ -655,6 +674,7 @@ export default function Chat() {
             key={activeConversation.inviteId}
             conversation={activeConversation}
             onBack={handleBack}
+            onMarkAsRead={markAsRead}
           />
         ) : (
           <EmptyState />

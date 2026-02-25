@@ -568,6 +568,11 @@ export default function Invitations() {
               fetchMessageCounts();
             }
           }}
+          onOpen={() => {
+            // Mark conversation as read when provider opens the chat
+            supabase.rpc("mark_conversation_read", { p_invite_id: chatInvite.id });
+            setMessageCounts((prev) => ({ ...prev, [chatInvite.id]: 0 }));
+          }}
           inviteId={chatInvite.id}
           patientName={
             chatInvite.patient_first_name && chatInvite.patient_last_name

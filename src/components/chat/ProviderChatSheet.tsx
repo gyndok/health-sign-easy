@@ -1,3 +1,4 @@
+import { useEffect, useRef } from "react";
 import {
   Sheet,
   SheetContent,
@@ -11,6 +12,8 @@ import { useConsentChat } from "@/hooks/useConsentChat";
 interface ProviderChatSheetProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
+  /** Called once when the sheet first opens (e.g. to mark conversation as read) */
+  onOpen?: () => void;
   inviteId: string;
   patientName: string;
   moduleName: string;
@@ -19,6 +22,7 @@ interface ProviderChatSheetProps {
 export function ProviderChatSheet({
   open,
   onOpenChange,
+  onOpen,
   inviteId,
   patientName,
   moduleName,
@@ -27,6 +31,18 @@ export function ProviderChatSheet({
     inviteId,
     enabled: open,
   });
+
+  // Fire onOpen once when the sheet opens
+  const firedRef = useRef(false);
+  useEffect(() => {
+    if (open && onOpen && !firedRef.current) {
+      firedRef.current = true;
+      onOpen();
+    }
+    if (!open) {
+      firedRef.current = false;
+    }
+  }, [open, onOpen]);
 
   return (
     <Sheet open={open} onOpenChange={onOpenChange}>

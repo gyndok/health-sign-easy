@@ -399,6 +399,7 @@ export type Database = {
           patient_last_name: string | null
           patient_phone: string | null
           patient_user_id: string | null
+          provider_last_read_at: string | null
           status: Database["public"]["Enums"]["invite_status"]
           token: string
           viewed_at: string | null
@@ -416,6 +417,7 @@ export type Database = {
           patient_last_name?: string | null
           patient_phone?: string | null
           patient_user_id?: string | null
+          provider_last_read_at?: string | null
           status?: Database["public"]["Enums"]["invite_status"]
           token?: string
           viewed_at?: string | null
@@ -433,6 +435,7 @@ export type Database = {
           patient_last_name?: string | null
           patient_phone?: string | null
           patient_user_id?: string | null
+          provider_last_read_at?: string | null
           status?: Database["public"]["Enums"]["invite_status"]
           token?: string
           viewed_at?: string | null
@@ -827,6 +830,12 @@ export type Database = {
       link_invite_patient_user_by_token: {
         Args: { p_first_name: string; p_last_name: string; p_token: string }
         Returns: boolean
+      }
+      mark_conversation_read: {
+        Args: {
+          p_invite_id: string
+        }
+        Returns: undefined
       }
       log_audit_event: {
         Args: {
