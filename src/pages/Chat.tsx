@@ -1,329 +1,45 @@
 import { useState, useRef, useEffect, useCallback } from "react";
+import { Link, useNavigate } from "react-router-dom";
 import { cn } from "@/lib/utils";
-import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
+import { useAuth } from "@/hooks/useAuth";
+import { useConsentChat, ChatMessage } from "@/hooks/useConsentChat";
+import { supabase } from "@/integrations/supabase/client";
+import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Skeleton } from "@/components/ui/skeleton";
-import { Progress } from "@/components/ui/progress";
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
 import {
-  Home,
-  Settings,
-  User,
+  LayoutDashboard,
   Search,
-  Smile,
-  Paperclip,
   Send,
-  Check,
-  CheckCheck,
-  FileText,
-  Image as ImageIcon,
-  X,
-  Phone,
-  Video,
-  MoreVertical,
   ArrowLeft,
   MessageSquare,
+  Loader2,
+  Shield,
+  FileText,
 } from "lucide-react";
+import { formatDistanceToNow } from "date-fns";
 
 // ─── Types ───────────────────────────────────────────────────────────
-interface Contact {
-  id: string;
-  name: string;
-  avatar?: string;
-  initials: string;
-  status: "online" | "offline" | "away" | "busy";
+interface Conversation {
+  inviteId: string;
+  patientName: string;
+  patientEmail: string;
+  patientInitials: string;
+  moduleName: string;
+  inviteStatus: string;
   lastMessage: string;
   lastMessageTime: string;
-  unread: number;
-  role: string;
-}
-
-interface Attachment {
-  id: string;
-  type: "file" | "image";
-  name: string;
-  size: string;
-  url?: string;
-  progress?: number; // 0-100, undefined means complete
-}
-
-interface Message {
-  id: string;
-  senderId: string;
-  text?: string;
-  timestamp: string;
-  status: "sent" | "delivered" | "read";
-  attachments?: Attachment[];
-}
-
-// ─── Demo Data ───────────────────────────────────────────────────────
-const CURRENT_USER_ID = "me";
-
-const contacts: Contact[] = [
-  {
-    id: "1",
-    name: "Dr. Sarah Chen",
-    initials: "SC",
-    status: "online",
-    lastMessage: "The consent form looks great, let me review...",
-    lastMessageTime: "2m",
-    unread: 3,
-    role: "Cardiologist",
-  },
-  {
-    id: "2",
-    name: "James Wilson",
-    initials: "JW",
-    status: "online",
-    lastMessage: "I signed the consent form",
-    lastMessageTime: "15m",
-    unread: 0,
-    role: "Patient",
-  },
-  {
-    id: "3",
-    name: "Dr. Emily Park",
-    initials: "EP",
-    status: "away",
-    lastMessage: "Can you send the updated module?",
-    lastMessageTime: "1h",
-    unread: 1,
-    role: "Orthopedic Surgeon",
-  },
-  {
-    id: "4",
-    name: "Maria Garcia",
-    initials: "MG",
-    status: "offline",
-    lastMessage: "Thank you for explaining the procedure",
-    lastMessageTime: "3h",
-    unread: 0,
-    role: "Patient",
-  },
-  {
-    id: "5",
-    name: "Dr. Robert Kim",
-    initials: "RK",
-    status: "busy",
-    lastMessage: "Meeting at 3pm to discuss compliance",
-    lastMessageTime: "5h",
-    unread: 0,
-    role: "Chief Medical Officer",
-  },
-  {
-    id: "6",
-    name: "Lisa Thompson",
-    initials: "LT",
-    status: "offline",
-    lastMessage: "I have a question about the procedure",
-    lastMessageTime: "1d",
-    unread: 0,
-    role: "Patient",
-  },
-  {
-    id: "7",
-    name: "Dr. Ahmed Patel",
-    initials: "AP",
-    status: "online",
-    lastMessage: "New audit log entry flagged",
-    lastMessageTime: "1d",
-    unread: 0,
-    role: "Compliance Officer",
-  },
-];
-
-const demoMessages: Record<string, Message[]> = {
-  "1": [
-    {
-      id: "m1",
-      senderId: "1",
-      text: "Hi! I wanted to discuss the new cardiac consent module before we publish it.",
-      timestamp: "10:30 AM",
-      status: "read",
-    },
-    {
-      id: "m2",
-      senderId: CURRENT_USER_ID,
-      text: "Sure, I've been working on the risk disclosure section. Want me to share the draft?",
-      timestamp: "10:32 AM",
-      status: "read",
-    },
-    {
-      id: "m3",
-      senderId: "1",
-      text: "Yes please! Also, make sure we include the new FDA guidelines from last month.",
-      timestamp: "10:33 AM",
-      status: "read",
-    },
-    {
-      id: "m4",
-      senderId: CURRENT_USER_ID,
-      text: "Here's the latest draft with all the updates:",
-      timestamp: "10:35 AM",
-      status: "read",
-      attachments: [
-        {
-          id: "a1",
-          type: "file",
-          name: "Cardiac_Consent_Module_v3.pdf",
-          size: "2.4 MB",
-        },
-      ],
-    },
-    {
-      id: "m5",
-      senderId: "1",
-      text: "This looks comprehensive. I especially like the visual diagram for the procedure steps.",
-      timestamp: "10:40 AM",
-      status: "read",
-    },
-    {
-      id: "m6",
-      senderId: CURRENT_USER_ID,
-      text: "Thanks! I added those based on patient feedback. Here are the diagrams I used:",
-      timestamp: "10:41 AM",
-      status: "read",
-      attachments: [
-        {
-          id: "a2",
-          type: "image",
-          name: "procedure_diagram_1.png",
-          size: "850 KB",
-          url: "https://images.unsplash.com/photo-1559757175-7cb057fba93c?w=300&h=200&fit=crop",
-        },
-        {
-          id: "a3",
-          type: "image",
-          name: "procedure_diagram_2.png",
-          size: "1.1 MB",
-          url: "https://images.unsplash.com/photo-1576091160550-2173dba999ef?w=300&h=200&fit=crop",
-        },
-        {
-          id: "a4",
-          type: "image",
-          name: "risk_chart.png",
-          size: "620 KB",
-          url: "https://images.unsplash.com/photo-1551288049-bebda4e38f71?w=300&h=200&fit=crop",
-        },
-      ],
-    },
-    {
-      id: "m7",
-      senderId: "1",
-      text: "The consent form looks great, let me review the final version and get back to you.",
-      timestamp: "10:45 AM",
-      status: "read",
-    },
-    {
-      id: "m8",
-      senderId: CURRENT_USER_ID,
-      text: "Sounds good! I'm also uploading the Spanish translation now.",
-      timestamp: "10:46 AM",
-      status: "delivered",
-      attachments: [
-        {
-          id: "a5",
-          type: "file",
-          name: "Cardiac_Consent_ES.pdf",
-          size: "2.6 MB",
-          progress: 67,
-        },
-      ],
-    },
-  ],
-};
-
-// ─── Status Color Helper ─────────────────────────────────────────────
-function statusColor(status: Contact["status"]) {
-  switch (status) {
-    case "online":
-      return "bg-emerald-500";
-    case "away":
-      return "bg-amber-500";
-    case "busy":
-      return "bg-red-500";
-    default:
-      return "bg-gray-400";
-  }
-}
-
-function statusLabel(status: Contact["status"]) {
-  switch (status) {
-    case "online":
-      return "Online";
-    case "away":
-      return "Away";
-    case "busy":
-      return "Do not disturb";
-    default:
-      return "Offline";
-  }
-}
-
-// ─── Navigation Rail ─────────────────────────────────────────────────
-function NavigationRail({
-  activeTab,
-  onTabChange,
-}: {
-  activeTab: string;
-  onTabChange: (tab: string) => void;
-}) {
-  const navItems = [
-    { id: "chat", icon: MessageSquare, label: "Chat" },
-    { id: "home", icon: Home, label: "Home" },
-    { id: "profile", icon: User, label: "Profile" },
-    { id: "settings", icon: Settings, label: "Settings" },
-  ];
-
-  return (
-    <div className="hidden md:flex flex-col items-center w-[68px] bg-muted/30 border-r border-border py-4 gap-1">
-      {/* Brand mark */}
-      <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-primary text-primary-foreground font-bold text-sm mb-4">
-        CC
-      </div>
-
-      <div className="flex-1 flex flex-col items-center gap-1">
-        {navItems.map((item) => (
-          <Tooltip key={item.id}>
-            <TooltipTrigger asChild>
-              <button
-                onClick={() => onTabChange(item.id)}
-                className={cn(
-                  "flex h-10 w-10 items-center justify-center rounded-xl transition-all duration-150",
-                  activeTab === item.id
-                    ? "bg-primary text-primary-foreground shadow-sm"
-                    : "text-muted-foreground hover:bg-muted hover:text-foreground"
-                )}
-              >
-                <item.icon className="h-5 w-5" />
-              </button>
-            </TooltipTrigger>
-            <TooltipContent side="right" sideOffset={8}>
-              {item.label}
-            </TooltipContent>
-          </Tooltip>
-        ))}
-      </div>
-
-      {/* Bottom avatar */}
-      <div className="mt-auto">
-        <Avatar className="h-9 w-9 ring-2 ring-primary/20">
-          <AvatarFallback className="text-xs font-semibold bg-primary/10 text-primary">
-            ME
-          </AvatarFallback>
-        </Avatar>
-      </div>
-    </div>
-  );
+  unreadCount: number;
 }
 
 // ─── Sidebar Skeleton Loader ─────────────────────────────────────────
 function SidebarSkeleton() {
   return (
     <div className="space-y-3 p-3">
-      {[...Array(6)].map((_, i) => (
+      {[...Array(4)].map((_, i) => (
         <div key={i} className="flex items-center gap-3 p-2">
           <Skeleton className="h-11 w-11 rounded-full shrink-0" />
           <div className="flex-1 space-y-2">
@@ -337,47 +53,99 @@ function SidebarSkeleton() {
   );
 }
 
+// ─── Navigation Rail ─────────────────────────────────────────────────
+function NavigationRail() {
+  return (
+    <div className="hidden md:flex flex-col items-center w-[68px] bg-muted/30 border-r border-border py-4 gap-1 shrink-0">
+      {/* Brand mark */}
+      <Link to="/dashboard" className="flex h-10 w-10 items-center justify-center rounded-xl bg-primary text-primary-foreground mb-4">
+        <Shield className="h-5 w-5" />
+      </Link>
+
+      <div className="flex-1 flex flex-col items-center gap-1">
+        <Tooltip>
+          <TooltipTrigger asChild>
+            <Link
+              to="/dashboard"
+              className="flex h-10 w-10 items-center justify-center rounded-xl text-muted-foreground hover:bg-muted hover:text-foreground transition-all duration-150"
+            >
+              <LayoutDashboard className="h-5 w-5" />
+            </Link>
+          </TooltipTrigger>
+          <TooltipContent side="right" sideOffset={8}>Dashboard</TooltipContent>
+        </Tooltip>
+
+        <Tooltip>
+          <TooltipTrigger asChild>
+            <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-primary text-primary-foreground shadow-sm">
+              <MessageSquare className="h-5 w-5" />
+            </div>
+          </TooltipTrigger>
+          <TooltipContent side="right" sideOffset={8}>Patient Questions</TooltipContent>
+        </Tooltip>
+      </div>
+    </div>
+  );
+}
+
 // ─── Conversation Sidebar ────────────────────────────────────────────
 function ConversationSidebar({
-  contacts,
-  activeContactId,
-  onSelectContact,
+  conversations,
+  activeInviteId,
+  onSelectConversation,
   isLoading,
   searchQuery,
   onSearchChange,
+  onBackToDashboard,
 }: {
-  contacts: Contact[];
-  activeContactId: string | null;
-  onSelectContact: (id: string) => void;
+  conversations: Conversation[];
+  activeInviteId: string | null;
+  onSelectConversation: (id: string) => void;
   isLoading: boolean;
   searchQuery: string;
   onSearchChange: (q: string) => void;
+  onBackToDashboard: () => void;
 }) {
-  const filteredContacts = contacts.filter(
+  const filtered = conversations.filter(
     (c) =>
-      c.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      c.role.toLowerCase().includes(searchQuery.toLowerCase())
+      c.patientName.toLowerCase().includes(searchQuery.toLowerCase()) ||
+      c.patientEmail.toLowerCase().includes(searchQuery.toLowerCase()) ||
+      c.moduleName.toLowerCase().includes(searchQuery.toLowerCase())
   );
 
+  const totalUnread = conversations.reduce((acc, c) => acc + c.unreadCount, 0);
+
   return (
-    <div className="flex flex-col w-full md:w-[320px] lg:w-[360px] border-r border-border bg-background">
+    <div className="flex flex-col w-full md:w-[320px] lg:w-[360px] min-w-[280px] border-r border-border bg-background shrink-0">
       {/* Header */}
-      <div className="flex items-center justify-between px-4 py-3 border-b border-border">
-        <h2 className="font-display text-lg font-bold">Messages</h2>
-        <Badge variant="default" className="text-[10px] px-2 py-0.5">
-          {contacts.reduce((acc, c) => acc + c.unread, 0)} new
-        </Badge>
+      <div className="flex items-center justify-between px-4 py-3 border-b border-border shrink-0">
+        <div className="flex items-center gap-2">
+          <Button
+            variant="ghost"
+            size="icon"
+            className="md:hidden h-8 w-8"
+            onClick={onBackToDashboard}
+          >
+            <ArrowLeft className="h-4 w-4" />
+          </Button>
+          <h2 className="font-display text-lg font-bold">Patient Questions</h2>
+        </div>
+        {totalUnread > 0 && (
+          <Badge variant="default" className="text-[10px] px-2 py-0.5">
+            {totalUnread} new
+          </Badge>
+        )}
       </div>
 
       {/* Search */}
-      <div className="px-3 py-2">
+      <div className="px-3 py-2 shrink-0">
         <div className="relative">
           <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
           <input
             type="text"
             value={searchQuery}
             onChange={(e) => onSearchChange(e.target.value)}
-            placeholder="Search conversations..."
+            placeholder="Search by patient or module..."
             className="w-full h-9 pl-9 pr-3 rounded-lg bg-muted/50 border border-border text-sm placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary/30 transition-all"
           />
         </div>
@@ -387,46 +155,49 @@ function ConversationSidebar({
       <ScrollArea className="flex-1">
         {isLoading ? (
           <SidebarSkeleton />
-        ) : filteredContacts.length === 0 ? (
+        ) : filtered.length === 0 ? (
           <div className="flex flex-col items-center justify-center py-12 px-4 text-center">
-            <Search className="h-8 w-8 text-muted-foreground/50 mb-2" />
-            <p className="text-sm text-muted-foreground">No conversations found</p>
+            {conversations.length === 0 ? (
+              <>
+                <MessageSquare className="h-8 w-8 text-muted-foreground/50 mb-2" />
+                <p className="text-sm text-muted-foreground">No patient questions yet</p>
+                <p className="text-xs text-muted-foreground/70 mt-1">
+                  Questions from patients will appear here
+                </p>
+              </>
+            ) : (
+              <>
+                <Search className="h-8 w-8 text-muted-foreground/50 mb-2" />
+                <p className="text-sm text-muted-foreground">No conversations match your search</p>
+              </>
+            )}
           </div>
         ) : (
           <div className="p-1.5">
-            {filteredContacts.map((contact) => (
+            {filtered.map((conv) => (
               <button
-                key={contact.id}
-                onClick={() => onSelectContact(contact.id)}
+                key={conv.inviteId}
+                onClick={() => onSelectConversation(conv.inviteId)}
                 className={cn(
                   "w-full flex items-center gap-3 px-3 py-2.5 rounded-lg transition-all duration-150 text-left group",
-                  activeContactId === contact.id
+                  activeInviteId === conv.inviteId
                     ? "bg-primary/10 border border-primary/20"
                     : "hover:bg-muted/60 border border-transparent"
                 )}
               >
-                {/* Avatar with status */}
-                <div className="relative shrink-0">
-                  <Avatar className="h-11 w-11">
-                    {contact.avatar && <AvatarImage src={contact.avatar} />}
-                    <AvatarFallback
-                      className={cn(
-                        "text-xs font-semibold",
-                        activeContactId === contact.id
-                          ? "bg-primary/20 text-primary"
-                          : "bg-muted text-muted-foreground"
-                      )}
-                    >
-                      {contact.initials}
-                    </AvatarFallback>
-                  </Avatar>
-                  <span
+                {/* Avatar */}
+                <Avatar className="h-11 w-11 shrink-0">
+                  <AvatarFallback
                     className={cn(
-                      "absolute bottom-0 right-0 h-3 w-3 rounded-full border-2 border-background",
-                      statusColor(contact.status)
+                      "text-xs font-semibold",
+                      activeInviteId === conv.inviteId
+                        ? "bg-primary/20 text-primary"
+                        : "bg-muted text-muted-foreground"
                     )}
-                  />
-                </div>
+                  >
+                    {conv.patientInitials}
+                  </AvatarFallback>
+                </Avatar>
 
                 {/* Content */}
                 <div className="flex-1 min-w-0">
@@ -434,29 +205,35 @@ function ConversationSidebar({
                     <span
                       className={cn(
                         "text-sm font-medium truncate",
-                        contact.unread > 0 && "font-semibold"
+                        conv.unreadCount > 0 && "font-semibold"
                       )}
                     >
-                      {contact.name}
+                      {conv.patientName}
                     </span>
                     <span className="text-[11px] text-muted-foreground shrink-0 ml-2">
-                      {contact.lastMessageTime}
+                      {conv.lastMessageTime}
+                    </span>
+                  </div>
+                  <div className="flex items-center gap-1 mb-0.5">
+                    <FileText className="h-3 w-3 text-muted-foreground/60 shrink-0" />
+                    <span className="text-[11px] text-muted-foreground truncate">
+                      {conv.moduleName}
                     </span>
                   </div>
                   <div className="flex items-center justify-between">
                     <p
                       className={cn(
                         "text-xs truncate pr-2",
-                        contact.unread > 0
+                        conv.unreadCount > 0
                           ? "text-foreground font-medium"
                           : "text-muted-foreground"
                       )}
                     >
-                      {contact.lastMessage}
+                      {conv.lastMessage || "No messages yet"}
                     </p>
-                    {contact.unread > 0 && (
+                    {conv.unreadCount > 0 && (
                       <span className="flex h-5 min-w-[20px] items-center justify-center rounded-full bg-primary px-1.5 text-[10px] font-bold text-primary-foreground shrink-0">
-                        {contact.unread}
+                        {conv.unreadCount}
                       </span>
                     )}
                   </div>
@@ -474,211 +251,53 @@ function ConversationSidebar({
 function MessageBubble({
   message,
   isSent,
-  showAvatar,
-  contact,
+  showName,
 }: {
-  message: Message;
+  message: ChatMessage;
   isSent: boolean;
-  showAvatar: boolean;
-  contact: Contact;
+  showName: boolean;
 }) {
   return (
     <div
       className={cn("flex gap-2 px-4 group", isSent ? "flex-row-reverse" : "flex-row")}
     >
-      {/* Avatar for received messages */}
-      {!isSent ? (
-        showAvatar ? (
-          <Avatar className="h-8 w-8 mt-1 shrink-0">
-            <AvatarFallback className="text-[10px] font-semibold bg-muted text-muted-foreground">
-              {contact.initials}
-            </AvatarFallback>
-          </Avatar>
-        ) : (
-          <div className="w-8 shrink-0" />
-        )
-      ) : null}
-
-      {/* Bubble */}
       <div
-        className={cn("max-w-[75%] space-y-1.5", isSent ? "items-end" : "items-start")}
+        className={cn("max-w-[75%] space-y-1", isSent ? "items-end" : "items-start")}
       >
-        {/* Text */}
-        {message.text && (
-          <div
+        {/* Sender name */}
+        {showName && (
+          <p
             className={cn(
-              "px-3.5 py-2.5 rounded-2xl text-sm leading-relaxed",
-              isSent
-                ? "bg-primary text-primary-foreground rounded-br-md"
-                : "bg-muted rounded-bl-md"
+              "text-[11px] font-medium px-1",
+              isSent ? "text-right text-primary/70" : "text-muted-foreground"
             )}
           >
-            {message.text}
-          </div>
+            {message.sender_name}
+          </p>
         )}
 
-        {/* Attachments */}
-        {message.attachments && message.attachments.length > 0 && (
-          <div className="space-y-2">
-            {/* Image Grid */}
-            {message.attachments.some((a) => a.type === "image") && (
-              <ImageGrid
-                images={message.attachments.filter((a) => a.type === "image")}
-              />
-            )}
-            {/* File Chips */}
-            {message.attachments
-              .filter((a) => a.type === "file")
-              .map((file) => (
-                <FileChip key={file.id} attachment={file} isSent={isSent} />
-              ))}
-          </div>
-        )}
-
-        {/* Timestamp + read receipt */}
+        {/* Bubble */}
         <div
           className={cn(
-            "flex items-center gap-1 px-1",
-            isSent ? "justify-end" : "justify-start"
+            "px-3.5 py-2.5 rounded-2xl text-sm leading-relaxed whitespace-pre-wrap break-words",
+            isSent
+              ? "bg-primary text-primary-foreground rounded-br-md"
+              : "bg-muted rounded-bl-md"
           )}
         >
-          <span className="text-[10px] text-muted-foreground opacity-0 group-hover:opacity-100 transition-opacity">
-            {message.timestamp}
-          </span>
-          {isSent && (
-            <span className="text-muted-foreground">
-              {message.status === "read" ? (
-                <CheckCheck className="h-3.5 w-3.5 text-primary" />
-              ) : message.status === "delivered" ? (
-                <CheckCheck className="h-3.5 w-3.5" />
-              ) : (
-                <Check className="h-3.5 w-3.5" />
-              )}
-            </span>
-          )}
+          {message.message}
         </div>
-      </div>
-    </div>
-  );
-}
 
-// ─── File Chip ───────────────────────────────────────────────────────
-function FileChip({
-  attachment,
-  isSent,
-}: {
-  attachment: Attachment;
-  isSent: boolean;
-}) {
-  const isUploading = attachment.progress !== undefined && attachment.progress < 100;
-
-  return (
-    <div
-      className={cn(
-        "relative flex items-center gap-3 px-3 py-2.5 rounded-xl border max-w-[260px] overflow-hidden transition-colors",
-        isSent
-          ? "bg-primary/5 border-primary/20 hover:bg-primary/10"
-          : "bg-muted/50 border-border hover:bg-muted"
-      )}
-    >
-      <div
-        className={cn(
-          "flex h-9 w-9 items-center justify-center rounded-lg shrink-0",
-          isSent ? "bg-primary/10" : "bg-background"
-        )}
-      >
-        <FileText className={cn("h-4.5 w-4.5", isSent ? "text-primary" : "text-muted-foreground")} />
-      </div>
-      <div className="flex-1 min-w-0">
-        <p className="text-xs font-medium truncate">{attachment.name}</p>
-        <p className="text-[10px] text-muted-foreground">
-          {isUploading ? `Uploading... ${attachment.progress}%` : attachment.size}
+        {/* Timestamp */}
+        <p
+          className={cn(
+            "text-[10px] text-muted-foreground px-1 opacity-0 group-hover:opacity-100 transition-opacity",
+            isSent ? "text-right" : "text-left"
+          )}
+        >
+          {formatDistanceToNow(new Date(message.created_at), { addSuffix: true })}
         </p>
       </div>
-      {isUploading && (
-        <button className="shrink-0 text-muted-foreground hover:text-foreground transition-colors">
-          <X className="h-3.5 w-3.5" />
-        </button>
-      )}
-
-      {/* Upload progress overlay */}
-      {isUploading && (
-        <div className="absolute bottom-0 left-0 right-0 h-1">
-          <Progress value={attachment.progress} className="h-1 rounded-none" />
-        </div>
-      )}
-    </div>
-  );
-}
-
-// ─── Image Grid ──────────────────────────────────────────────────────
-function ImageGrid({ images }: { images: Attachment[] }) {
-  const count = images.length;
-
-  return (
-    <div
-      className={cn(
-        "grid gap-1 rounded-xl overflow-hidden max-w-[320px]",
-        count === 1 && "grid-cols-1",
-        count === 2 && "grid-cols-2",
-        count >= 3 && "grid-cols-2"
-      )}
-    >
-      {images.slice(0, 4).map((img, i) => (
-        <div
-          key={img.id}
-          className={cn(
-            "relative bg-muted overflow-hidden cursor-pointer group/img",
-            count === 1 && "aspect-video",
-            count === 2 && "aspect-square",
-            count === 3 && i === 0 && "row-span-2 aspect-auto h-full",
-            count === 3 && i > 0 && "aspect-square",
-            count >= 4 && "aspect-square"
-          )}
-        >
-          {img.url ? (
-            <img
-              src={img.url}
-              alt={img.name}
-              className="h-full w-full object-cover transition-transform duration-200 group-hover/img:scale-105"
-            />
-          ) : (
-            <div className="h-full w-full flex items-center justify-center">
-              <ImageIcon className="h-8 w-8 text-muted-foreground/50" />
-            </div>
-          )}
-          {/* Overlay for 4+ images */}
-          {count > 4 && i === 3 && (
-            <div className="absolute inset-0 bg-black/50 flex items-center justify-center">
-              <span className="text-white text-lg font-bold">+{count - 4}</span>
-            </div>
-          )}
-          {/* Upload progress overlay for images */}
-          {img.progress !== undefined && img.progress < 100 && (
-            <div className="absolute inset-0 bg-black/40 flex items-center justify-center">
-              <div className="text-center text-white">
-                <p className="text-sm font-medium">{img.progress}%</p>
-              </div>
-            </div>
-          )}
-        </div>
-      ))}
-    </div>
-  );
-}
-
-// ─── Typing Indicator ────────────────────────────────────────────────
-function TypingIndicator({ name }: { name: string }) {
-  return (
-    <div className="flex items-center gap-2 px-4 py-2">
-      <div className="flex items-center gap-1.5 px-3 py-2 rounded-2xl bg-muted rounded-bl-md">
-        <div className="flex gap-1">
-          <span className="h-1.5 w-1.5 rounded-full bg-muted-foreground/60 animate-bounce [animation-delay:0ms]" />
-          <span className="h-1.5 w-1.5 rounded-full bg-muted-foreground/60 animate-bounce [animation-delay:150ms]" />
-          <span className="h-1.5 w-1.5 rounded-full bg-muted-foreground/60 animate-bounce [animation-delay:300ms]" />
-        </div>
-      </div>
-      <span className="text-xs text-muted-foreground">{name} is typing...</span>
     </div>
   );
 }
@@ -686,16 +305,10 @@ function TypingIndicator({ name }: { name: string }) {
 // ─── Chat Input Area ─────────────────────────────────────────────────
 function ChatInput({
   onSend,
-  isDragOver,
-  onDragOver,
-  onDragLeave,
-  onDrop,
+  isSending,
 }: {
-  onSend: (text: string) => void;
-  isDragOver: boolean;
-  onDragOver: (e: React.DragEvent) => void;
-  onDragLeave: (e: React.DragEvent) => void;
-  onDrop: (e: React.DragEvent) => void;
+  onSend: (text: string) => Promise<void>;
+  isSending: boolean;
 }) {
   const [text, setText] = useState("");
   const textareaRef = useRef<HTMLTextAreaElement>(null);
@@ -708,13 +321,12 @@ function ChatInput({
     }
   }, []);
 
-  const handleSend = () => {
-    if (!text.trim()) return;
-    onSend(text.trim());
+  const handleSend = async () => {
+    if (!text.trim() || isSending) return;
+    const msg = text.trim();
     setText("");
-    if (textareaRef.current) {
-      textareaRef.current.style.height = "auto";
-    }
+    if (textareaRef.current) textareaRef.current.style.height = "auto";
+    await onSend(msg);
   };
 
   const handleKeyDown = (e: React.KeyboardEvent) => {
@@ -725,42 +337,8 @@ function ChatInput({
   };
 
   return (
-    <div
-      onDragOver={onDragOver}
-      onDragLeave={onDragLeave}
-      onDrop={onDrop}
-      className={cn(
-        "border-t border-border bg-background p-3 transition-all",
-        isDragOver && "bg-primary/5 border-primary/30 border-dashed border-2"
-      )}
-    >
-      {isDragOver && (
-        <div className="flex items-center justify-center py-4 mb-2 rounded-lg border-2 border-dashed border-primary/40 bg-primary/5">
-          <div className="text-center">
-            <Paperclip className="h-6 w-6 text-primary mx-auto mb-1" />
-            <p className="text-sm font-medium text-primary">Drop files here to attach</p>
-          </div>
-        </div>
-      )}
+    <div className="border-t border-border bg-background p-3">
       <div className="flex items-end gap-2">
-        <div className="flex gap-0.5 shrink-0 pb-1">
-          <Tooltip>
-            <TooltipTrigger asChild>
-              <Button variant="ghost" size="icon" className="h-8 w-8 text-muted-foreground hover:text-foreground">
-                <Smile className="h-4.5 w-4.5" />
-              </Button>
-            </TooltipTrigger>
-            <TooltipContent>Emoji</TooltipContent>
-          </Tooltip>
-          <Tooltip>
-            <TooltipTrigger asChild>
-              <Button variant="ghost" size="icon" className="h-8 w-8 text-muted-foreground hover:text-foreground">
-                <Paperclip className="h-4.5 w-4.5" />
-              </Button>
-            </TooltipTrigger>
-            <TooltipContent>Attach file</TooltipContent>
-          </Tooltip>
-        </div>
         <div className="flex-1 relative">
           <textarea
             ref={textareaRef}
@@ -770,13 +348,14 @@ function ChatInput({
               autoResize();
             }}
             onKeyDown={handleKeyDown}
-            placeholder="Type a message..."
+            placeholder="Type a reply..."
             rows={1}
-            className="w-full resize-none rounded-xl bg-muted/50 border border-border px-4 py-2.5 text-sm placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary/30 transition-all"
+            disabled={isSending}
+            className="w-full resize-none rounded-xl bg-muted/50 border border-border px-4 py-2.5 text-sm placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary/30 transition-all disabled:opacity-50"
             style={{ minHeight: "40px", maxHeight: "120px" }}
           />
         </div>
-        <div className="shrink-0 pb-1">
+        <div className="shrink-0 pb-0.5">
           <Button
             size="icon"
             className={cn(
@@ -785,13 +364,20 @@ function ChatInput({
                 ? "bg-primary text-primary-foreground shadow-sm hover:bg-primary/90"
                 : "bg-muted text-muted-foreground"
             )}
-            disabled={!text.trim()}
+            disabled={!text.trim() || isSending}
             onClick={handleSend}
           >
-            <Send className="h-4 w-4" />
+            {isSending ? (
+              <Loader2 className="h-4 w-4 animate-spin" />
+            ) : (
+              <Send className="h-4 w-4" />
+            )}
           </Button>
         </div>
       </div>
+      <p className="text-[10px] text-muted-foreground mt-1.5 px-1">
+        Press Enter to send, Shift+Enter for new line
+      </p>
     </div>
   );
 }
@@ -804,9 +390,9 @@ function EmptyState() {
         <div className="flex h-16 w-16 items-center justify-center rounded-2xl bg-primary/10 mx-auto mb-4">
           <MessageSquare className="h-8 w-8 text-primary" />
         </div>
-        <h3 className="font-display text-xl font-bold mb-2">Your Messages</h3>
+        <h3 className="font-display text-xl font-bold mb-2">Patient Questions</h3>
         <p className="text-sm text-muted-foreground leading-relaxed">
-          Select a conversation to start chatting with your team members and patients.
+          Select a conversation to view and reply to patient questions about their consent forms.
         </p>
       </div>
     </div>
@@ -815,19 +401,17 @@ function EmptyState() {
 
 // ─── Main Chat Window ────────────────────────────────────────────────
 function ChatWindow({
-  contact,
-  messages,
-  onSend,
+  conversation,
   onBack,
 }: {
-  contact: Contact;
-  messages: Message[];
-  onSend: (text: string) => void;
+  conversation: Conversation;
   onBack: () => void;
 }) {
   const scrollRef = useRef<HTMLDivElement>(null);
-  const [isDragOver, setIsDragOver] = useState(false);
-  const [showTyping, setShowTyping] = useState(true);
+  const { messages, sendMessage, isLoading, isSending } = useConsentChat({
+    inviteId: conversation.inviteId,
+    enabled: true,
+  });
 
   // Auto-scroll to bottom
   useEffect(() => {
@@ -836,33 +420,11 @@ function ChatWindow({
     }
   }, [messages]);
 
-  // Simulate typing indicator disappearing
-  useEffect(() => {
-    setShowTyping(true);
-    const timer = setTimeout(() => setShowTyping(false), 4000);
-    return () => clearTimeout(timer);
-  }, [contact.id]);
-
-  const handleDragOver = (e: React.DragEvent) => {
-    e.preventDefault();
-    setIsDragOver(true);
-  };
-  const handleDragLeave = (e: React.DragEvent) => {
-    e.preventDefault();
-    setIsDragOver(false);
-  };
-  const handleDrop = (e: React.DragEvent) => {
-    e.preventDefault();
-    setIsDragOver(false);
-    // In production, handle file upload here
-  };
-
   return (
     <div className="flex-1 flex flex-col min-w-0 bg-background">
       {/* Chat Header */}
-      <div className="flex items-center justify-between px-4 py-3 border-b border-border bg-background">
+      <div className="flex items-center justify-between px-4 py-3 border-b border-border bg-background shrink-0">
         <div className="flex items-center gap-3">
-          {/* Back button on mobile */}
           <Button
             variant="ghost"
             size="icon"
@@ -872,138 +434,169 @@ function ChatWindow({
             <ArrowLeft className="h-4 w-4" />
           </Button>
 
-          <div className="relative">
-            <Avatar className="h-9 w-9">
-              <AvatarFallback className="text-xs font-semibold bg-primary/10 text-primary">
-                {contact.initials}
-              </AvatarFallback>
-            </Avatar>
-            <span
-              className={cn(
-                "absolute bottom-0 right-0 h-2.5 w-2.5 rounded-full border-2 border-background",
-                statusColor(contact.status)
-              )}
-            />
-          </div>
+          <Avatar className="h-9 w-9">
+            <AvatarFallback className="text-xs font-semibold bg-primary/10 text-primary">
+              {conversation.patientInitials}
+            </AvatarFallback>
+          </Avatar>
           <div>
-            <h3 className="text-sm font-semibold leading-tight">{contact.name}</h3>
-            <p className="text-[11px] text-muted-foreground">{statusLabel(contact.status)} &middot; {contact.role}</p>
+            <h3 className="text-sm font-semibold leading-tight">{conversation.patientName}</h3>
+            <p className="text-[11px] text-muted-foreground">
+              {conversation.moduleName} &middot; {conversation.inviteStatus}
+            </p>
           </div>
-        </div>
-        <div className="flex items-center gap-1">
-          <Tooltip>
-            <TooltipTrigger asChild>
-              <Button variant="ghost" size="icon" className="h-8 w-8 text-muted-foreground hover:text-foreground">
-                <Phone className="h-4 w-4" />
-              </Button>
-            </TooltipTrigger>
-            <TooltipContent>Voice call</TooltipContent>
-          </Tooltip>
-          <Tooltip>
-            <TooltipTrigger asChild>
-              <Button variant="ghost" size="icon" className="h-8 w-8 text-muted-foreground hover:text-foreground">
-                <Video className="h-4 w-4" />
-              </Button>
-            </TooltipTrigger>
-            <TooltipContent>Video call</TooltipContent>
-          </Tooltip>
-          <Tooltip>
-            <TooltipTrigger asChild>
-              <Button variant="ghost" size="icon" className="h-8 w-8 text-muted-foreground hover:text-foreground">
-                <MoreVertical className="h-4 w-4" />
-              </Button>
-            </TooltipTrigger>
-            <TooltipContent>More</TooltipContent>
-          </Tooltip>
         </div>
       </div>
 
       {/* Messages */}
-      <div ref={scrollRef} className="flex-1 overflow-y-auto py-4 space-y-3">
-        {/* Date divider */}
-        <div className="flex items-center gap-3 px-4 py-2">
-          <div className="flex-1 h-px bg-border" />
-          <span className="text-[11px] font-medium text-muted-foreground bg-background px-2">
-            Today
-          </span>
-          <div className="flex-1 h-px bg-border" />
+      {isLoading ? (
+        <div className="flex-1 flex items-center justify-center">
+          <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />
         </div>
-
-        {messages.map((msg, i) => {
-          const isSent = msg.senderId === CURRENT_USER_ID;
-          // Show avatar on first message or when sender changes
-          const showAvatar =
-            i === 0 || messages[i - 1].senderId !== msg.senderId;
-
-          return (
-            <MessageBubble
-              key={msg.id}
-              message={msg}
-              isSent={isSent}
-              showAvatar={showAvatar}
-              contact={contact}
-            />
-          );
-        })}
-
-        {/* Typing indicator */}
-        {showTyping && <TypingIndicator name={contact.name.split(" ")[0]} />}
-      </div>
+      ) : (
+        <div ref={scrollRef} className="flex-1 overflow-y-auto py-4 space-y-3">
+          {messages.length === 0 ? (
+            <div className="flex flex-col items-center justify-center py-12 text-center">
+              <MessageSquare className="h-10 w-10 text-muted-foreground/40 mb-3" />
+              <p className="text-sm text-muted-foreground">No messages yet</p>
+              <p className="text-xs text-muted-foreground/70 mt-1">
+                The patient hasn&apos;t asked any questions
+              </p>
+            </div>
+          ) : (
+            messages.map((msg, i) => {
+              const isSent = msg.sender_role === "provider";
+              const showName =
+                i === 0 || messages[i - 1].sender_role !== msg.sender_role;
+              return (
+                <MessageBubble
+                  key={msg.id}
+                  message={msg}
+                  isSent={isSent}
+                  showName={showName}
+                />
+              );
+            })
+          )}
+        </div>
+      )}
 
       {/* Input */}
-      <ChatInput
-        onSend={onSend}
-        isDragOver={isDragOver}
-        onDragOver={handleDragOver}
-        onDragLeave={handleDragLeave}
-        onDrop={handleDrop}
-      />
+      <ChatInput onSend={sendMessage} isSending={isSending} />
     </div>
   );
 }
 
 // ─── Main Chat Page ──────────────────────────────────────────────────
 export default function Chat() {
-  const [activeTab, setActiveTab] = useState("chat");
-  const [activeContactId, setActiveContactId] = useState<string | null>("1");
-  const [searchQuery, setSearchQuery] = useState("");
+  const { user } = useAuth();
+  const navigate = useNavigate();
+  const [conversations, setConversations] = useState<Conversation[]>([]);
   const [isLoading, setIsLoading] = useState(true);
-  const [allMessages, setAllMessages] = useState(demoMessages);
-
-  // Simulate loading
-  useEffect(() => {
-    const timer = setTimeout(() => setIsLoading(false), 1200);
-    return () => clearTimeout(timer);
-  }, []);
-
-  const activeContact = contacts.find((c) => c.id === activeContactId) || null;
-  const currentMessages = activeContactId
-    ? allMessages[activeContactId] || []
-    : [];
-
-  const handleSend = (text: string) => {
-    if (!activeContactId) return;
-    const newMsg: Message = {
-      id: `m-${Date.now()}`,
-      senderId: CURRENT_USER_ID,
-      text,
-      timestamp: new Date().toLocaleTimeString([], {
-        hour: "numeric",
-        minute: "2-digit",
-      }),
-      status: "sent",
-    };
-    setAllMessages((prev) => ({
-      ...prev,
-      [activeContactId]: [...(prev[activeContactId] || []), newMsg],
-    }));
-  };
-
-  // Mobile: show sidebar or chat window
+  const [activeInviteId, setActiveInviteId] = useState<string | null>(null);
+  const [searchQuery, setSearchQuery] = useState("");
   const [showMobileSidebar, setShowMobileSidebar] = useState(true);
 
-  const handleSelectContact = (id: string) => {
-    setActiveContactId(id);
+  // Fetch conversations (invites that have messages)
+  const fetchConversations = useCallback(async () => {
+    if (!user) return;
+
+    // Get all invites created by this provider
+    const { data: invites, error: invErr } = await supabase
+      .from("invites")
+      .select(`
+        id, patient_first_name, patient_last_name, patient_email, status,
+        consent_modules ( name )
+      `)
+      .eq("created_by", user.id)
+      .order("created_at", { ascending: false });
+
+    if (invErr) {
+      console.error("Error fetching invites:", invErr);
+      setIsLoading(false);
+      return;
+    }
+
+    // Get message counts per invite
+    const { data: counts } = await supabase.rpc("get_invite_unread_message_counts");
+    const countMap: Record<string, number> = {};
+    for (const row of counts || []) {
+      countMap[row.invite_id] = row.patient_message_count;
+    }
+
+    // Get last message per invite — fetch all consent_messages for this provider's invites
+    const inviteIds = (invites || []).map((i) => i.id);
+    const lastMsgMap: Record<string, { message: string; created_at: string }> = {};
+
+    if (inviteIds.length > 0) {
+      const { data: msgs } = await supabase
+        .from("consent_messages")
+        .select("invite_id, message, created_at")
+        .in("invite_id", inviteIds)
+        .order("created_at", { ascending: false });
+
+      // Keep only the latest message per invite
+      for (const msg of msgs || []) {
+        if (!lastMsgMap[msg.invite_id]) {
+          lastMsgMap[msg.invite_id] = { message: msg.message, created_at: msg.created_at };
+        }
+      }
+    }
+
+    // Build conversation list — only include invites that have at least one message
+    const convos: Conversation[] = [];
+    for (const inv of invites || []) {
+      const lastMsg = lastMsgMap[inv.id];
+      if (!lastMsg) continue; // skip invites with no messages
+
+      const firstName = inv.patient_first_name || "";
+      const lastName = inv.patient_last_name || "";
+      const fullName = firstName && lastName
+        ? `${firstName} ${lastName}`
+        : inv.patient_email;
+      const initials = firstName && lastName
+        ? `${firstName[0]}${lastName[0]}`.toUpperCase()
+        : inv.patient_email.slice(0, 2).toUpperCase();
+
+      const moduleName = (inv.consent_modules as { name: string } | null)?.name || "Consent Form";
+
+      convos.push({
+        inviteId: inv.id,
+        patientName: fullName,
+        patientEmail: inv.patient_email,
+        patientInitials: initials,
+        moduleName,
+        inviteStatus: inv.status.charAt(0).toUpperCase() + inv.status.slice(1),
+        lastMessage: lastMsg.message,
+        lastMessageTime: formatDistanceToNow(new Date(lastMsg.created_at), { addSuffix: true }),
+        unreadCount: countMap[inv.id] || 0,
+      });
+    }
+
+    // Sort by most recent message
+    convos.sort((a, b) => {
+      const aTime = lastMsgMap[a.inviteId]?.created_at || "";
+      const bTime = lastMsgMap[b.inviteId]?.created_at || "";
+      return bTime.localeCompare(aTime);
+    });
+
+    setConversations(convos);
+    setIsLoading(false);
+
+    // Auto-select first conversation if none selected
+    if (!activeInviteId && convos.length > 0) {
+      setActiveInviteId(convos[0].inviteId);
+    }
+  }, [user, activeInviteId]);
+
+  useEffect(() => {
+    fetchConversations();
+  }, [fetchConversations]);
+
+  const activeConversation = conversations.find((c) => c.inviteId === activeInviteId) || null;
+
+  const handleSelectConversation = (id: string) => {
+    setActiveInviteId(id);
     setShowMobileSidebar(false);
   };
 
@@ -1014,9 +607,9 @@ export default function Chat() {
   return (
     <div className="flex h-screen w-full overflow-hidden bg-background">
       {/* Navigation Rail */}
-      <NavigationRail activeTab={activeTab} onTabChange={setActiveTab} />
+      <NavigationRail />
 
-      {/* Conversation Sidebar — hidden on mobile when viewing chat */}
+      {/* Conversation Sidebar */}
       <div
         className={cn(
           "md:flex",
@@ -1024,27 +617,27 @@ export default function Chat() {
         )}
       >
         <ConversationSidebar
-          contacts={contacts}
-          activeContactId={activeContactId}
-          onSelectContact={handleSelectContact}
+          conversations={conversations}
+          activeInviteId={activeInviteId}
+          onSelectConversation={handleSelectConversation}
           isLoading={isLoading}
           searchQuery={searchQuery}
           onSearchChange={setSearchQuery}
+          onBackToDashboard={() => navigate("/dashboard")}
         />
       </div>
 
-      {/* Main Chat Window — hidden on mobile when viewing sidebar */}
+      {/* Main Chat Window */}
       <div
         className={cn(
-          "flex-1 md:flex",
+          "flex-1 md:flex min-w-0",
           showMobileSidebar ? "hidden" : "flex"
         )}
       >
-        {activeContact ? (
+        {activeConversation ? (
           <ChatWindow
-            contact={activeContact}
-            messages={currentMessages}
-            onSend={handleSend}
+            key={activeConversation.inviteId}
+            conversation={activeConversation}
             onBack={handleBack}
           />
         ) : (
