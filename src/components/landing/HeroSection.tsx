@@ -32,7 +32,7 @@ export function HeroSection() {
             </Button>
           </div>
           <p className="text-xs text-muted-foreground mt-6 animate-fade-in" style={{ animationDelay: "0.3s" }}>
-            No credit card required. Try the full platform with sample data.
+            No credit card required. This is an MVP demo with sample data &mdash; not for use with real patients.
           </p>
         </div>
       </div>

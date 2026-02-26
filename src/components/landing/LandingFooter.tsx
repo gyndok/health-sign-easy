@@ -27,6 +27,11 @@ export function LandingFooter() {
             &copy; {new Date().getFullYear()} ClearConsent. All rights reserved.
           </p>
         </div>
+        <div className="mt-6 pt-6 border-t border-border text-center">
+          <p className="text-xs text-muted-foreground">
+            ClearConsent is an MVP for demonstration purposes only. Not yet HIPAA compliant. Do not use with real patient data.
+          </p>
+        </div>
       </div>
     </footer>
   );

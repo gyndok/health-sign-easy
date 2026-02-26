@@ -21,7 +21,7 @@ export function CTASection() {
             </Link>
           </Button>
           <p className="text-sm opacity-70 mt-4">
-            No credit card required. Demo account with sample data.
+            No credit card required. This is an MVP demo &mdash; not for use with real patient data.
           </p>
         </div>
       </div>

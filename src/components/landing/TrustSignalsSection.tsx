@@ -9,8 +9,8 @@ const signals = [
   },
   {
     icon: Shield,
-    title: "Working Toward HIPAA",
-    description: "Designed with HIPAA compliance in mind. BAAs and audits on our roadmap.",
+    title: "Not Yet HIPAA Compliant",
+    description: "This is an MVP. HIPAA compliance is on our roadmap. Do not use with real protected health information (PHI).",
   },
   {
     icon: FileText,

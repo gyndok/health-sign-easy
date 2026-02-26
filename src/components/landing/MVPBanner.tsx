@@ -1,36 +1,13 @@
-import { useState } from "react";
-import { Sparkles, X } from "lucide-react";
-import { Button } from "@/components/ui/button";
+import { AlertTriangle } from "lucide-react";
 
 export function MVPBanner() {
-  const [isDismissed, setIsDismissed] = useState(() => {
-    return sessionStorage.getItem("beta_banner_dismissed") === "true";
-  });
-
-  if (isDismissed) return null;
-
-  const handleDismiss = () => {
-    setIsDismissed(true);
-    sessionStorage.setItem("beta_banner_dismissed", "true");
-  };
-
   return (
-    <div className="bg-primary/5 border-b border-primary/10">
-      <div className="container py-2.5 flex items-center justify-between gap-3">
-        <div className="flex items-center gap-2 text-primary flex-1 justify-center">
-          <Sparkles className="h-4 w-4 flex-shrink-0" />
-          <p className="text-xs font-medium">
-            Now in Beta &mdash; Try ClearConsent free during our early access period.
-          </p>
-        </div>
-        <Button
-          variant="ghost"
-          size="icon"
-          className="h-6 w-6 text-primary hover:bg-primary/10 flex-shrink-0"
-          onClick={handleDismiss}
-        >
-          <X className="h-3.5 w-3.5" />
-        </Button>
+    <div className="bg-amber-50 border-b border-amber-200 dark:bg-amber-950/40 dark:border-amber-800">
+      <div className="container py-2.5 flex items-center justify-center gap-2">
+        <AlertTriangle className="h-4 w-4 flex-shrink-0 text-amber-600 dark:text-amber-400" />
+        <p className="text-xs font-medium text-amber-800 dark:text-amber-300">
+          This is an MVP demo &mdash; ClearConsent is not yet HIPAA compliant. Do not use with real patient data.
+        </p>
       </div>
     </div>
   );
